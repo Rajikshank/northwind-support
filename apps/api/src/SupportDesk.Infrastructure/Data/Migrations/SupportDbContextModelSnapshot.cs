@@ -46,8 +46,15 @@ namespace SupportDesk.Infrastructure.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("LastSuccessfulLoginAtUtc")
+                        .HasColumnType("datetime2(7)");
+
                     b.Property<int>("MaxOpenTickets")
                         .HasColumnType("int");
+
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.HasKey("Id");
 

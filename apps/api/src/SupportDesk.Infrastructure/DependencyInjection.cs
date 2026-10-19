@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
 
+        services.AddScoped<IAuthentication, AuthenticationService>();
         services.AddScoped<ITriageData, TriageData>();
         services.AddScoped<ITicketQueries, TicketQueries>();
         services.AddScoped<ICustomerQueries, CustomerQueries>();

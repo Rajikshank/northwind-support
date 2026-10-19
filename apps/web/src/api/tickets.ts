@@ -40,8 +40,8 @@ function buildQuery(filters: TicketFilters): string {
 
 export const ticketsApi = {
   getEscalations: (id: number) => request<TicketEscalation[]>(`/tickets/${id}/escalations`),
-  escalate: (id: number, reason: string, escalatedBy: string) => request<{ticket: TicketDetail; escalation: TicketEscalation}>(`/tickets/${id}/escalate`, {
-    method: 'POST', body: JSON.stringify({reason, escalatedBy}),
+  escalate: (id: number, reason: string) => request<{ticket: TicketDetail; escalation: TicketEscalation}>(`/tickets/${id}/escalate`, {
+    method: 'POST', body: JSON.stringify({reason}),
   }),
   getTickets: (filters: TicketFilters, signal?: AbortSignal) =>
     request<PagedResult<TicketListItem>>(`/tickets?${buildQuery(filters)}`, { signal }),

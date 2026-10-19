@@ -12,7 +12,6 @@ beforeEach(() => vi.mocked(ticketsApi.getEscalations).mockResolvedValue([]));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 it('blocks a short reason without sending it', async () => {
   render(<EscalationPanel ticket={ticket} agents={[]} onUpdated={vi.fn()} />);
-  fireEvent.change(screen.getByLabelText('Your name'), {target: {value: 'Alex'}});
   fireEvent.change(screen.getByLabelText('Reason'), {target: {value: 'bad'}});
   fireEvent.click(screen.getByText('Escalate ticket'));
   expect(await screen.findByRole('alert')).toHaveTextContent('5-500');
@@ -22,7 +21,6 @@ it('shows conflict without replacing the ticket', async () => {
   vi.mocked(ticketsApi.escalate).mockRejectedValue(new ApiError(409, 'Critical tickets cannot be escalated further.'));
   const updated = vi.fn();
   render(<EscalationPanel ticket={ticket} agents={[]} onUpdated={updated} />);
-  fireEvent.change(screen.getByLabelText('Your name'), {target: {value: 'Alex'}});
   fireEvent.change(screen.getByLabelText('Reason'), {target: {value: 'Customer site is down'}});
   fireEvent.click(screen.getByText('Escalate ticket'));
   await waitFor(() => expect(screen.getByText('Critical tickets cannot be escalated further.')).toBeInTheDocument());

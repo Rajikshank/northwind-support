@@ -25,6 +25,7 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
         if (await db.Set<Ticket>().AnyAsync(ct))
         {
             logger.LogInformation("Seed data already present; skipping.");
+            await SeedCredentialsAsync(ct);
             await BackfillSlaAsync(ct);
             return;
         }
@@ -46,10 +47,20 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
         SeedTickets(now, customers, categories, agents);
         await db.SaveChangesAsync(ct);
 
+        await SeedCredentialsAsync(ct);
         await BackfillSlaAsync(ct);
         logger.LogInformation(
             "Seeded {Categories} categories, {Customers} customers, {Agents} agents and {Tickets} tickets.",
             categories.Count, customers.Count, agents.Count, await db.Set<Ticket>().CountAsync(ct));
+    }
+
+    private async Task SeedCredentialsAsync(CancellationToken ct)
+    {
+        // Local demo fixture only. Never reset an existing hash on startup.
+        var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Agent>();
+        foreach (var agent in await db.Set<Agent>().Where(a => a.PasswordHash == null).ToListAsync(ct))
+            agent.SetPasswordHash(hasher.HashPassword(agent, "LocalDemo-Only!2026"));
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task BackfillSlaAsync(CancellationToken ct)

@@ -9,10 +9,10 @@ export function useEscalation(id: number, onUpdated: (ticket: TicketDetail) => v
   const history = useAsyncData(load, 'Unable to load escalation history.');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const submit = async (reason: string, actor: string) => {
+  const submit = async (reason: string) => {
     setPending(true); setError(undefined);
     try {
-      const result = await ticketsApi.escalate(id, reason, actor);
+      const result = await ticketsApi.escalate(id, reason);
       onUpdated(result.ticket);
       await history.reload();
       return true;

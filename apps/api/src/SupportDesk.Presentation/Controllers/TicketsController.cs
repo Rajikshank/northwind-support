@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SupportDesk.Application.Contracts.Common;
 using SupportDesk.Application.Contracts.Tickets;
@@ -58,8 +59,9 @@ public sealed class TicketsController : ControllerBase
         handler.HandleAsync(id, request, ct);
     [HttpPost("{id:int}/escalate")]
     public Task<SupportDesk.Application.Features.Tickets.EscalationResult> Escalate(int id,
-        SupportDesk.Application.Features.Tickets.EscalateRequest request,
-        [FromServices] SupportDesk.Application.Features.Tickets.EscalateTicketHandler handler, CancellationToken ct) => handler.HandleAsync(id, request, ct);
+        EscalationBody request,
+        [FromServices] SupportDesk.Application.Features.Tickets.EscalateTicketHandler handler, CancellationToken ct) => handler.HandleAsync(id,
+            new(request.Reason, $"agent:{User.FindFirstValue(ClaimTypes.NameIdentifier)}"), ct);
 
     [HttpGet("{id:int}/escalations")]
     public async Task<IReadOnlyList<SupportDesk.Domain.Aggregates.Tickets.TicketEscalation>> History(int id,
@@ -70,3 +72,5 @@ public sealed class TicketsController : ControllerBase
         return await data.HistoryAsync(id, ct);
     }
 }
+
+public sealed record EscalationBody(string Reason);

@@ -7,7 +7,6 @@ import { ErrorMessage } from '../../../components/ErrorMessage';
 export function EscalationPanel({ticket, agents, onUpdated}: {ticket: TicketDetail; agents: Agent[]; onUpdated: (ticket: TicketDetail) => void}) {
   const { history, pending, error, submit } = useEscalation(ticket.id, onUpdated);
   const [reason, setReason] = useState('');
-  const [actor, setActor] = useState('');
   const [validation, setValidation] = useState<string>();
   const eligible = ticket.priority !== 'Critical' && ticket.status !== 'Resolved' && ticket.status !== 'Closed';
   const name = (id: number | null) => agents.find(a => a.id === id)?.fullName ?? (id === null ? 'Unassigned' : `Agent ${id}`);
@@ -15,14 +14,12 @@ export function EscalationPanel({ticket, agents, onUpdated}: {ticket: TicketDeta
     <h2>Escalation</h2>
     {eligible ? <form onSubmit={async event => {
       event.preventDefault();
-      if (reason.trim().length < 5 || reason.trim().length > 500 || !actor.trim()) {
-        setValidation('Enter a reason of 5-500 characters and your name.'); return;
+      if (reason.trim().length < 5 || reason.trim().length > 500) {
+        setValidation('Enter a reason of 5-500 characters.'); return;
       }
       setValidation(undefined);
-      if (await submit(reason.trim(), actor.trim())) setReason('');
+      if (await submit(reason.trim())) setReason('');
     }}>
-      <label htmlFor="escalation-actor">Your name</label>
-      <input id="escalation-actor" value={actor} maxLength={100} onChange={e => setActor(e.target.value)} />
       <label htmlFor="escalation-reason">Reason</label>
       <textarea id="escalation-reason" value={reason} onChange={e => setReason(e.target.value)} aria-invalid={!!validation} aria-describedby={validation ? 'escalation-validation' : undefined} />
       {validation && <p id="escalation-validation" role="alert">{validation}</p>}

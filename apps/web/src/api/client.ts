@@ -1,3 +1,4 @@
+import { getSession, setSession } from '../auth/session';
 import type { ProblemDetails } from '../types/api';
 
 /**
@@ -30,14 +31,20 @@ export class ApiError extends Error {
  * {@link ApiError} that callers can show to the user.
  */
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const session = getSession();
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(session ? { Authorization: `Bearer ${session.token}` } : {}),
       ...(init?.headers ?? {}),
     },
   });
 
+  if (path !== '/auth/login' && session !== getSession()) {
+    throw new ApiError(401, 'Session changed. Sign in again.');
+  }
+  if (response.status === 401 && path !== '/auth/login' && session === getSession()) setSession(null);
   if (!response.ok) {
     const problem = await readProblem(response);
 
