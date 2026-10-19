@@ -68,3 +68,9 @@ The shell's system Node 24.13.1 is below some locked dependencies' supported pat
 ## Deferred completion checklist
 
 After freeing storage: build/start with a disposable empty SQL volume; apply migrations and verify seeded logins/data; inspect actual filtered count/page SQL and SLA boundaries on SQL Server; check database-unavailable health; record restore-layer cache reuse after a source edit; measure image versus matching SDK size; run `whoami`; verify browser via the container proxy. Do not run volume deletion against an existing database just to produce evidence. Until these pass, Task 4 and full SQL Server runtime verification are unfinished.
+
+## Resumption check
+
+Later on 19 October, C: had about 8.5 GB free. Docker Desktop still failed to start: its backend reported that the temporary `Docker/run/dockerInference` socket could not be removed/accessed. A normal startup retry and termination of only the docker-desktop WSL distribution did not restore the engine. Automated removal of the zero-byte runtime socket was blocked by tool policy, so the user was given the precise manual cleanup step. No images, volumes or database files were deleted.
+
+`scripts/verify-live.ps1` now provides repeatable live SQL-backed API checks and a credential-free JSON report. `scripts/browser-live.mjs` provides a real browser/API workflow through the Vite proxy. Both are prepared for the next run; they have not passed against a running backend yet. The PowerShell script parses successfully. No previous deferred check is marked complete by these preparations.
