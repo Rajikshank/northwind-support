@@ -50,6 +50,7 @@ The local engine became available, but image extraction exhausted C: and failed.
 - Request-body actors and client “human” flags cannot establish identity.
 - Authenticated endpoints need one central policy, including newly added endpoints.
 - Compose .env does not automatically configure dotnet run.
+- The inherited PR template also mentions DEFECT-104, but the provided assessment supplies only DEFECT-117. I did not invent a DEFECT-104 fix or claim an unidentified issue was resolved.
 - An optimized image must still work; no size or cache claim is valid without a build.
 
 ## Time and AI disclosure
