@@ -107,3 +107,11 @@ and 40 tickets across every status, priority and SLA state.
 | Browser warns about the certificate | `dotnet dev-certs https --trust`, or use the web app, which proxies |
 | Web app shows "Unable to load tickets" | The API is not running, or `VITE_API_PROXY_TARGET` points at the wrong port |
 | SQL Server slow on Apple Silicon | Enable Rosetta in Docker Desktop → Settings → General |
+
+## DEFECT-117
+
+The request effect read every filter but subscribed only to search and pagination. A status
+change on page 1 therefore sent no request until a watched value changed. The hook now
+subscribes to the complete committed query, debounces only search, and cancels obsolete
+requests. `useTicketList.requests.test.ts` exercises the real URL serializer and failed
+on the original code (expected one request, received zero).
