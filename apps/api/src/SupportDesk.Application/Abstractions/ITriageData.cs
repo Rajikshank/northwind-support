@@ -1,7 +1,8 @@
-using SupportDesk.Domain.Aggregates.Tickets;
-using SupportDesk.Domain.Aggregates.Customers;
 using SupportDesk.Domain.Aggregates.Categories;
+using SupportDesk.Domain.Aggregates.Customers;
+using SupportDesk.Domain.Aggregates.Tickets;
 namespace SupportDesk.Application.Abstractions;
+
 public interface ITriageData
 {
     Task<Customer?> CustomerAsync(int id, CancellationToken ct);

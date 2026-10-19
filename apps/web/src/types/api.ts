@@ -7,11 +7,14 @@ export type CustomerTier = 'Standard' | 'Premium';
 
 export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
-export type TicketStatus = 'New' | 'Open' | 'InProgress' | 'Resolved' | 'Closed';
+export type TicketStatus =
+  'New' | 'Open' | 'InProgress' | 'Resolved' | 'Closed';
 
-export type SlaStatus = 'NotApplicable' | 'WithinSla' | 'AtRisk' | 'Breached' | 'Met';
+export type SlaStatus =
+  'NotApplicable' | 'WithinSla' | 'AtRisk' | 'Breached' | 'Met';
 
-export type TicketSortField = 'createdAtUtc' | 'updatedAtUtc' | 'dueAtUtc' | 'priority' | 'status';
+export type TicketSortField =
+  'createdAtUtc' | 'updatedAtUtc' | 'dueAtUtc' | 'priority' | 'status';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -161,9 +164,15 @@ export interface TriageDecision {
   assignmentReason: string;
 }
 export interface TicketEscalation {
-  id: number; ticketId: number;
-  fromPriority: TicketPriority; toPriority: TicketPriority;
-  fromAgentId: number | null; toAgentId: number | null;
-  fromDueAtUtc: string | null; toDueAtUtc: string | null;
-  reason: string; escalatedBy: string; escalatedAtUtc: string;
+  id: number;
+  ticketId: number;
+  fromPriority: TicketPriority;
+  toPriority: TicketPriority;
+  fromAgentId: number | null;
+  toAgentId: number | null;
+  fromDueAtUtc: string | null;
+  toDueAtUtc: string | null;
+  reason: string;
+  escalatedBy: string;
+  escalatedAtUtc: string;
 }

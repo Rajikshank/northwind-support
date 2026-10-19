@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../api/client';
 import { ticketsApi } from '../../../api/tickets';
-import type { PagedResult, TicketFilters, TicketListItem } from '../../../types/api';
+import type {
+  PagedResult,
+  TicketFilters,
+  TicketListItem,
+} from '../../../types/api';
 
 const DEBOUNCE_MS = 300;
 
@@ -38,19 +42,33 @@ export function useTicketList() {
     // Some transports can finish after cancellation; never publish their stale result.
     let current = true;
     const load = async () => {
-      setState((previous) => ({ ...previous, isLoading: true, error: undefined }));
+      setState((previous) => ({
+        ...previous,
+        isLoading: true,
+        error: undefined,
+      }));
       try {
         const data = await ticketsApi.getTickets(filters, controller.signal);
         if (current) setState({ isLoading: false, data });
       } catch (error) {
         if (current) {
-          const message = error instanceof ApiError ? error.message : 'Unable to load tickets.';
-          setState((previous) => ({ ...previous, isLoading: false, error: message }));
+          const message =
+            error instanceof ApiError
+              ? error.message
+              : 'Unable to load tickets.';
+          setState((previous) => ({
+            ...previous,
+            isLoading: false,
+            error: message,
+          }));
         }
       }
     };
     void load();
-    return () => { current = false; controller.abort(); };
+    return () => {
+      current = false;
+      controller.abort();
+    };
   }, [filters, revision]);
 
   useEffect(() => () => window.clearTimeout(pendingSearch.current), []);
@@ -68,7 +86,11 @@ export function useTicketList() {
     const { search: ignoredSearch, ...immediate } = patch;
     void ignoredSearch;
     if (Object.keys(immediate).length) {
-      setFilters((previous) => ({ ...previous, ...immediate, page: patch.page ?? 1 }));
+      setFilters((previous) => ({
+        ...previous,
+        ...immediate,
+        page: patch.page ?? 1,
+      }));
     }
   };
   const resetFilters = () => {
@@ -77,7 +99,10 @@ export function useTicketList() {
     setFilters({ ...emptyFilters });
   };
   return {
-    filters: { ...filters, search }, updateFilters, resetFilters,
-    reload: () => setRevision((value) => value + 1), ...state,
+    filters: { ...filters, search },
+    updateFilters,
+    resetFilters,
+    reload: () => setRevision((value) => value + 1),
+    ...state,
   };
 }

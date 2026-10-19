@@ -44,7 +44,12 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (path !== '/auth/login' && session !== getSession()) {
     throw new ApiError(401, 'Session changed. Sign in again.');
   }
-  if (response.status === 401 && path !== '/auth/login' && session === getSession()) setSession(null);
+  if (
+    response.status === 401 &&
+    path !== '/auth/login' &&
+    session === getSession()
+  )
+    setSession(null);
   if (!response.ok) {
     const problem = await readProblem(response);
 
@@ -75,7 +80,9 @@ export function toErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-async function readProblem(response: Response): Promise<ProblemDetails | undefined> {
+async function readProblem(
+  response: Response,
+): Promise<ProblemDetails | undefined> {
   try {
     return (await response.json()) as ProblemDetails;
   } catch {

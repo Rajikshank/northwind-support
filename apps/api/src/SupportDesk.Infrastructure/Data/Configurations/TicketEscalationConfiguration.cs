@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SupportDesk.Domain.Aggregates.Tickets;
 using SupportDesk.Domain.Aggregates.Agents;
+using SupportDesk.Domain.Aggregates.Tickets;
 namespace SupportDesk.Infrastructure.Data.Configurations;
+
 public sealed class TicketEscalationConfiguration : IEntityTypeConfiguration<TicketEscalation>
 {
     public void Configure(EntityTypeBuilder<TicketEscalation> b)

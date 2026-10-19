@@ -19,7 +19,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     public async Task<PagedResult<TicketListItemDto>> GetPagedAsync(TicketQuery query, CancellationToken ct)
     {
         var now = clock.UtcNow;
-        var tickets = ApplyFilters(TicketsWithLabels(), query, now);
+        var tickets = ApplyFilters(TicketsWithLabels(now), query);
 
         var totalCount = await tickets.CountAsync(ct);
 
@@ -40,10 +40,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = x.Ticket.DueAtUtc == null ? SlaStatus.NotApplicable
-                    : x.Ticket.ResolvedAtUtc != null ? (x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
-                    : now > x.Ticket.DueAtUtc ? SlaStatus.Breached
-                    : x.Ticket.SlaAtRiskAtUtc != null && now >= x.Ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla
+                SlaStatus = x.SlaStatus
             })
             .ToListAsync(ct);
 
@@ -54,7 +51,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     {
         var now = clock.UtcNow;
 
-        return TicketsWithLabels()
+        return TicketsWithLabels(now)
             .Where(x => x.Ticket.Id == id)
             .Select(x => new TicketDetailDto
             {
@@ -72,10 +69,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = x.Ticket.DueAtUtc == null ? SlaStatus.NotApplicable
-                    : x.Ticket.ResolvedAtUtc != null ? (x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
-                    : now > x.Ticket.DueAtUtc ? SlaStatus.Breached
-                    : x.Ticket.SlaAtRiskAtUtc != null && now >= x.Ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla
+                SlaStatus = x.SlaStatus
             })
             .FirstOrDefaultAsync(ct);
     }
@@ -84,7 +78,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     {
         var now = clock.UtcNow;
 
-        return await TicketsWithLabels()
+        return await TicketsWithLabels(now)
             .Where(x => x.Ticket.CustomerId == customerId)
             .OrderByDescending(x => x.Ticket.CreatedAtUtc)
             .ThenByDescending(x => x.Ticket.Id)
@@ -102,10 +96,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = x.Ticket.DueAtUtc == null ? SlaStatus.NotApplicable
-                    : x.Ticket.ResolvedAtUtc != null ? (x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
-                    : now > x.Ticket.DueAtUtc ? SlaStatus.Breached
-                    : x.Ticket.SlaAtRiskAtUtc != null && now >= x.Ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla
+                SlaStatus = x.SlaStatus
             })
             .ToListAsync(ct);
     }
@@ -113,20 +104,28 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     /// <summary>
     /// Every ticket with the rows that label it. Filter and sort this, then project.
     /// </summary>
-    private IQueryable<TicketWithLabels> TicketsWithLabels() =>
+    private IQueryable<TicketWithLabels> TicketsWithLabels(DateTime now) =>
         from ticket in db.Set<Ticket>().AsNoTracking()
         join customer in db.Set<Customer>() on ticket.CustomerId equals customer.Id
         join category in db.Set<Category>() on ticket.CategoryId equals category.Id
         from agent in db.Set<Agent>().Where(a => a.Id == ticket.AssignedAgentId).DefaultIfEmpty()
-        select new TicketWithLabels { Ticket = ticket, Customer = customer, Category = category, Agent = agent };
+        select new TicketWithLabels
+        {
+            Ticket = ticket,
+            Customer = customer,
+            Category = category,
+            Agent = agent,
+            // This expression is composed into both WHERE and SELECT by EF, never evaluated after paging.
+            SlaStatus = ticket.DueAtUtc == null ? SlaStatus.NotApplicable
+                : ticket.ResolvedAtUtc != null ? (ticket.ResolvedAtUtc <= ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
+                : now > ticket.DueAtUtc ? SlaStatus.Breached
+                : ticket.SlaAtRiskAtUtc != null && now >= ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla
+        };
 
-    private static IQueryable<TicketWithLabels> ApplyFilters(IQueryable<TicketWithLabels> source, TicketQuery query, DateTime now)
+    private static IQueryable<TicketWithLabels> ApplyFilters(IQueryable<TicketWithLabels> source, TicketQuery query)
     {
         if (query.SlaStatus is { } sla)
-            source = source.Where(x => (x.Ticket.DueAtUtc == null ? SlaStatus.NotApplicable
-                : x.Ticket.ResolvedAtUtc != null ? (x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
-                : now > x.Ticket.DueAtUtc ? SlaStatus.Breached
-                : x.Ticket.SlaAtRiskAtUtc != null && now >= x.Ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla) == sla);
+            source = source.Where(x => x.SlaStatus == sla);
         if (query.Status is { } status) source = source.Where(x => x.Ticket.Status == status);
         if (query.Priority is { } priority) source = source.Where(x => x.Ticket.Priority == priority);
         if (query.CategoryId is { } category) source = source.Where(x => x.Ticket.CategoryId == category);
@@ -170,6 +169,8 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
 
     private sealed class TicketWithLabels
     {
+        public SlaStatus SlaStatus { get; init; }
+
         public required Ticket Ticket { get; init; }
 
         public required Customer Customer { get; init; }

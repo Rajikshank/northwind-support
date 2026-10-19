@@ -1,14 +1,15 @@
 using Moq;
 using SupportDesk.Application.Abstractions;
-using SupportDesk.Application.Features.Tickets;
-using SupportDesk.Domain.Aggregates.Tickets;
-using SupportDesk.Domain.Aggregates.Customers;
-using SupportDesk.Domain.Aggregates.Categories;
-using SupportDesk.Domain.Repositories;
-using SupportDesk.Application.Features.Tickets.Queries.GetTicket;
 using SupportDesk.Application.Contracts.Tickets;
+using SupportDesk.Application.Features.Tickets;
+using SupportDesk.Application.Features.Tickets.Queries.GetTicket;
+using SupportDesk.Domain.Aggregates.Categories;
+using SupportDesk.Domain.Aggregates.Customers;
+using SupportDesk.Domain.Aggregates.Tickets;
+using SupportDesk.Domain.Repositories;
 using SupportDesk.UnitTests.TestDoubles;
 namespace SupportDesk.UnitTests.Application.Features.Tickets;
+
 public class TriageTests
 {
     private readonly FixedClock clock = new();
@@ -24,7 +25,7 @@ public class TriageTests
     public async Task CreateForcesCriticalAndExplainsAssignment()
     {
         var service = Service(true);
-        var ticket = Ticket.Raise("TCK-0001", "Title", "Description", 1, 1, TicketPriority.Low, clock.UtcNow);
+        var ticket = new TicketBuilder().WithPriority(TicketPriority.Low).Build();
         var decision = await service.ApplyAsync(ticket, clock.UtcNow, false, default);
         Assert.Equal(TicketPriority.Critical, ticket.Priority);
         Assert.Equal(clock.UtcNow.AddHours(2), ticket.DueAtUtc);
@@ -35,7 +36,7 @@ public class TriageTests
     public async Task EscalationUsesNowAndWritesBeforeAfterInOneSave()
     {
         var service = Service();
-        var ticket = Ticket.Raise("TCK-0001", "Title", "Description", 1, 1, TicketPriority.Medium, clock.UtcNow);
+        var ticket = new TicketBuilder().Build();
         ticket.ApplyTriage(TicketPriority.Medium, 3, clock.UtcNow.AddHours(12), clock.UtcNow.AddHours(9), clock.UtcNow);
         var originalDue = ticket.DueAtUtc;
         clock.Advance(TimeSpan.FromHours(3));
@@ -59,7 +60,7 @@ public class TriageTests
     [InlineData(TicketPriority.Low, TicketStatus.Closed)]
     public void RejectsIneligibleState(TicketPriority priority, TicketStatus status)
     {
-        var ticket = Ticket.Raise("TCK-0001", "Title", "Description", 1, 1, priority, clock.UtcNow);
+        var ticket = new TicketBuilder().WithPriority(priority).Build();
         ticket.ChangeStatus(status, clock.UtcNow);
         Assert.Throws<SupportDesk.Domain.Exceptions.BusinessRuleViolationException>(ticket.EnsureCanEscalate);
     }

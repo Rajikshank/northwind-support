@@ -22,20 +22,39 @@ export function CreateTicketPage() {
         </div>
       </header>
 
-      {reference.isLoading && <Spinner label="Loading customers and categories" />}
+      {reference.isLoading && (
+        <Spinner label="Loading customers and categories" />
+      )}
 
       {reference.error && (
-        <ErrorMessage message={reference.error} onRetry={() => void reference.reload()} />
+        <ErrorMessage
+          message={reference.error}
+          onRetry={() => void reference.reload()}
+        />
       )}
 
       {created && (
         <div className="card notice" role="status">
           <p>
-            Raised <strong>{created.reference}</strong> for {created.customer.name}.
+            Raised <strong>{created.reference}</strong> for{' '}
+            {created.customer.name}.
           </p>
-          <p>Priority: {created.priority}. Due: {created.dueAtUtc ? new Date(created.dueAtUtc).toLocaleString() : 'No SLA'}.</p>
-          <p>{created.assignedAgent ? `Assigned to ${created.assignedAgent.fullName}` : 'Unassigned'}: {created.triage?.assignmentReason}</p>
-          <p>{created.triage?.priorityReason} {created.triage?.slaReason}</p>
+          <p>
+            Priority: {created.priority}. Due:{' '}
+            {created.dueAtUtc
+              ? new Date(created.dueAtUtc).toLocaleString()
+              : 'No SLA'}
+            .
+          </p>
+          <p>
+            {created.assignedAgent
+              ? `Assigned to ${created.assignedAgent.fullName}`
+              : 'Unassigned'}
+            : {created.triage?.assignmentReason}
+          </p>
+          <p>
+            {created.triage?.priorityReason} {created.triage?.slaReason}
+          </p>
           <div className="button-row">
             <button
               type="button"
@@ -44,7 +63,11 @@ export function CreateTicketPage() {
             >
               Open {created.reference}
             </button>
-            <button type="button" className="button button--ghost" onClick={() => setCreated(undefined)}>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => setCreated(undefined)}
+            >
               Raise another
             </button>
           </div>

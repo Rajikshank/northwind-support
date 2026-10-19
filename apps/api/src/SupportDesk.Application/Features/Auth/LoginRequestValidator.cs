@@ -1,6 +1,7 @@
 using FluentValidation;
 using SupportDesk.Application.Abstractions;
 namespace SupportDesk.Application.Features.Auth;
+
 public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
     public LoginRequestValidator()

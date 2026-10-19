@@ -1,3 +1,4 @@
+using SupportDesk.Application.Features.Tickets;
 using SupportDesk.Domain.Aggregates.Tickets;
 
 namespace SupportDesk.Application.Contracts.Tickets;
@@ -7,7 +8,7 @@ namespace SupportDesk.Application.Contracts.Tickets;
 /// </summary>
 public sealed class TicketDetailDto
 {
-    public SupportDesk.Application.Features.Tickets.TriageDecision? Triage { get; set; }
+    public TriageDecision? Triage { get; set; }
 
     public int Id { get; set; }
 

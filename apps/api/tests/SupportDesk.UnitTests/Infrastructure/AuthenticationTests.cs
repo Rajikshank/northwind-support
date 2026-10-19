@@ -8,6 +8,7 @@ using SupportDesk.Infrastructure.Data;
 using SupportDesk.Infrastructure.Services;
 using SupportDesk.UnitTests.TestDoubles;
 namespace SupportDesk.UnitTests.Infrastructure;
+
 public class AuthenticationTests
 {
     [Fact]

@@ -10,12 +10,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/SupportDesk.Presentation/SupportDesk.Presentation.csproj" />
     <ProjectReference Include="../../src/SupportDesk.Application/SupportDesk.Application.csproj" />
     <ProjectReference Include="../../src/SupportDesk.Domain/SupportDesk.Domain.csproj" />
     <ProjectReference Include="../../src/SupportDesk.Infrastructure/SupportDesk.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

@@ -9,7 +9,13 @@ import type {
 } from '../../../types/api';
 import { humanize } from '../../../lib/format';
 
-const statuses: TicketStatus[] = ['New', 'Open', 'InProgress', 'Resolved', 'Closed'];
+const statuses: TicketStatus[] = [
+  'New',
+  'Open',
+  'InProgress',
+  'Resolved',
+  'Closed',
+];
 const priorities: TicketPriority[] = ['Low', 'Medium', 'High', 'Critical'];
 
 interface TicketFiltersProps {
@@ -30,18 +36,30 @@ export function TicketFilters({
   onChange,
   onReset,
 }: TicketFiltersProps) {
-  const toNumber = (value: string) => (value === '' ? undefined : Number(value));
+  const toNumber = (value: string) =>
+    value === '' ? undefined : Number(value);
 
   return (
     <section className="filters" aria-label="Ticket filters">
       <div className="filters__row">
         <div className="field">
           <label htmlFor="filter-sla">SLA status</label>
-          <select id="filter-sla" value={filters.slaStatus ?? ''}
-            onChange={(event) => onChange({slaStatus: (event.target.value || undefined) as SlaStatus | undefined})}>
+          <select
+            id="filter-sla"
+            value={filters.slaStatus ?? ''}
+            onChange={(event) =>
+              onChange({
+                slaStatus: (event.target.value || undefined) as
+                  SlaStatus | undefined,
+              })
+            }
+          >
             <option value="">All SLA states</option>
-            <option value="WithinSla">Within SLA</option><option value="AtRisk">At risk</option>
-            <option value="Breached">Breached</option><option value="Met">Met</option><option value="NotApplicable">No SLA</option>
+            <option value="WithinSla">Within SLA</option>
+            <option value="AtRisk">At risk</option>
+            <option value="Breached">Breached</option>
+            <option value="Met">Met</option>
+            <option value="NotApplicable">No SLA</option>
           </select>
         </div>
         <div className="field">
@@ -65,7 +83,10 @@ export function TicketFilters({
             id="filter-status"
             value={filters.status ?? ''}
             onChange={(event) =>
-              onChange({ status: (event.target.value || undefined) as TicketStatus | undefined })
+              onChange({
+                status: (event.target.value || undefined) as
+                  TicketStatus | undefined,
+              })
             }
           >
             <option value="">All statuses</option>
@@ -85,7 +106,10 @@ export function TicketFilters({
             id="filter-priority"
             value={filters.priority ?? ''}
             onChange={(event) =>
-              onChange({ priority: (event.target.value || undefined) as TicketPriority | undefined })
+              onChange({
+                priority: (event.target.value || undefined) as
+                  TicketPriority | undefined,
+              })
             }
           >
             <option value="">All priorities</option>
@@ -106,7 +130,9 @@ export function TicketFilters({
           <select
             id="filter-category"
             value={filters.categoryId ?? ''}
-            onChange={(event) => onChange({ categoryId: toNumber(event.target.value) })}
+            onChange={(event) =>
+              onChange({ categoryId: toNumber(event.target.value) })
+            }
           >
             <option value="">All categories</option>
             {categories.map((category) => (
@@ -124,7 +150,9 @@ export function TicketFilters({
           <select
             id="filter-customer"
             value={filters.customerId ?? ''}
-            onChange={(event) => onChange({ customerId: toNumber(event.target.value) })}
+            onChange={(event) =>
+              onChange({ customerId: toNumber(event.target.value) })
+            }
           >
             <option value="">All customers</option>
             {customers.map((customer) => (
@@ -142,7 +170,9 @@ export function TicketFilters({
           <select
             id="filter-agent"
             value={filters.assignedAgentId ?? ''}
-            onChange={(event) => onChange({ assignedAgentId: toNumber(event.target.value) })}
+            onChange={(event) =>
+              onChange({ assignedAgentId: toNumber(event.target.value) })
+            }
           >
             <option value="">Any agent</option>
             {agents.map((agent) => (
@@ -182,12 +212,18 @@ export function TicketFilters({
           <input
             type="checkbox"
             checked={filters.unassignedOnly ?? false}
-            onChange={(event) => onChange({ unassignedOnly: event.target.checked })}
+            onChange={(event) =>
+              onChange({ unassignedOnly: event.target.checked })
+            }
           />
           Unassigned only
         </label>
 
-        <button type="button" className="button button--ghost" onClick={onReset}>
+        <button
+          type="button"
+          className="button button--ghost"
+          onClick={onReset}
+        >
           Clear filters
         </button>
       </div>

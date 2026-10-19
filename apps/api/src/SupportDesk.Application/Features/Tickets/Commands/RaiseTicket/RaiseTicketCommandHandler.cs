@@ -19,7 +19,7 @@ public sealed class RaiseTicketCommandHandler(
     IClock clock,
     GetTicketQueryHandler getTicket,
     ILogger<RaiseTicketCommandHandler> logger,
-    SupportDesk.Application.Features.Tickets.TriageService triage)
+    TriageService triage)
 {
     /// <exception cref="NotFoundException">The customer or the category does not exist.</exception>
     public async Task<TicketDetailDto> HandleAsync(CreateTicketRequest request, CancellationToken ct)
@@ -43,7 +43,7 @@ public sealed class RaiseTicketCommandHandler(
             request.RequestedPriority ?? TicketPriority.Medium,
             clock.UtcNow);
 
-        var decision = await triage.ApplyAsync(ticket, ticket.CreatedAtUtc, false, ct);
+        var decision = await triage.ApplyAsync(ticket, ticket.CreatedAtUtc, false, ct, defaultedPriority: request.RequestedPriority is null);
         await tickets.AddAsync(ticket, ct);
         await unitOfWork.SaveChangesAsync(ct);
 

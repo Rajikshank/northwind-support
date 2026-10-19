@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using SupportDesk.Application.Abstractions;
-using SupportDesk.Domain.Aggregates.Tickets;
-using SupportDesk.Domain.Aggregates.Customers;
-using SupportDesk.Domain.Aggregates.Categories;
 using SupportDesk.Domain.Aggregates.Agents;
+using SupportDesk.Domain.Aggregates.Categories;
+using SupportDesk.Domain.Aggregates.Customers;
+using SupportDesk.Domain.Aggregates.Tickets;
 using SupportDesk.Infrastructure.Data;
 namespace SupportDesk.Infrastructure.Queries;
+
 public sealed class TriageData(SupportDbContext db) : ITriageData
 {
     public Task<Customer?> CustomerAsync(int id, CancellationToken ct) => db.Set<Customer>().AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);

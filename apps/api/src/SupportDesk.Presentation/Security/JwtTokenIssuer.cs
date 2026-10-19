@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using SupportDesk.Application.Abstractions;
 namespace SupportDesk.Presentation.Security;
+
 public sealed class JwtTokenIssuer(JwtSettings settings, IClock clock) : ITokenIssuer
 {
     public AccessToken Issue(SignedInAgent agent)

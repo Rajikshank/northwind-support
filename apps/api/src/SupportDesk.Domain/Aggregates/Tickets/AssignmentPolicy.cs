@@ -1,4 +1,5 @@
 namespace SupportDesk.Domain.Aggregates.Tickets;
+
 public sealed record AssignmentCandidate(int Id, bool IsActive, bool IsSpecialist, int OpenTickets, int Limit);
 public static class AssignmentPolicy
 {

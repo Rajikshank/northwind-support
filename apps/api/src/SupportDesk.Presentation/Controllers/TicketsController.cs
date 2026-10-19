@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using SupportDesk.Application.Abstractions;
 using SupportDesk.Application.Contracts.Common;
 using SupportDesk.Application.Contracts.Tickets;
+using SupportDesk.Application.Features.Tickets;
 using SupportDesk.Application.Features.Tickets.Commands.AssignTicket;
 using SupportDesk.Application.Features.Tickets.Commands.ChangeTicketStatus;
 using SupportDesk.Application.Features.Tickets.Commands.RaiseTicket;
@@ -58,18 +60,18 @@ public sealed class TicketsController : ControllerBase
         CancellationToken ct) =>
         handler.HandleAsync(id, request, ct);
     [HttpPost("{id:int}/escalate")]
-    public Task<SupportDesk.Application.Features.Tickets.EscalationResult> Escalate(int id,
+    public Task<EscalationResult> Escalate(int id,
         EscalationBody request,
-        [FromServices] SupportDesk.Application.Features.Tickets.EscalateTicketHandler handler, CancellationToken ct) => handler.HandleAsync(id,
+        [FromServices] EscalateTicketHandler handler, CancellationToken ct) => handler.HandleAsync(id,
             new(request.Reason, $"agent:{User.FindFirstValue(ClaimTypes.NameIdentifier)}"), ct);
 
     [HttpGet("{id:int}/escalations")]
-    public async Task<IReadOnlyList<SupportDesk.Domain.Aggregates.Tickets.TicketEscalation>> History(int id,
-        [FromServices] SupportDesk.Application.Abstractions.ITriageData data,
+    public async Task<IReadOnlyList<EscalationDto>> History(int id,
+        [FromServices] ITriageData data,
         [FromServices] GetTicketQueryHandler read, CancellationToken ct)
     {
         await read.HandleAsync(id, ct);
-        return await data.HistoryAsync(id, ct);
+        return (await data.HistoryAsync(id, ct)).Select(EscalationDto.From).ToArray();
     }
 }
 

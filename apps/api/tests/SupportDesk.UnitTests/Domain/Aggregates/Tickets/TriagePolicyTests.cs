@@ -1,6 +1,7 @@
-using SupportDesk.Domain.Aggregates.Tickets;
 using SupportDesk.Domain.Aggregates.Customers;
+using SupportDesk.Domain.Aggregates.Tickets;
 namespace SupportDesk.UnitTests.Domain.Aggregates.Tickets;
+
 public class TriagePolicyTests
 {
     [Theory]

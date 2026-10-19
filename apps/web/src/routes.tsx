@@ -9,7 +9,7 @@ import { TicketDetailPage } from './features/tickets/TicketDetailPage';
 import { TicketListPage } from './features/tickets/TicketListPage';
 
 export const router = createBrowserRouter([
-  {path: '/login', element: <LoginPage />},
+  { path: '/login', element: <LoginPage /> },
   {
     path: '/',
     element: <ProtectedApp />,

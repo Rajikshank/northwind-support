@@ -1,4 +1,5 @@
 namespace SupportDesk.Application.Abstractions;
+
 public sealed record LoginRequest(string Email, string Password);
 public sealed record SignedInAgent(int Id, string FullName, string Email, DateTime? LastSuccessfulLoginAtUtc);
 public sealed record AccessToken(string Token, DateTime ExpiresAtUtc);

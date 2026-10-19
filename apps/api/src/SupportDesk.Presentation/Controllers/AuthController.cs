@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SupportDesk.Application.Abstractions;
 namespace SupportDesk.Presentation.Controllers;
+
 [ApiController]
 [Route("api/auth")]
 public sealed class AuthController(IAuthentication auth) : ControllerBase

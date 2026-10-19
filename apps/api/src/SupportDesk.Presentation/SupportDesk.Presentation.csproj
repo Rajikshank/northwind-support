@@ -16,4 +16,7 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
 </Project>
