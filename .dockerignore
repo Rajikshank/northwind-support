@@ -1,0 +1,14 @@
+**/bin
+**/obj
+**/node_modules
+.git
+.env
+.env.*
+!.env.example
+apps/web
+apps/api/tests
+artifacts
+**/*.log
+**/TestResults
+docs
+ASSIGNMENT_CANDIDATE.pdf
