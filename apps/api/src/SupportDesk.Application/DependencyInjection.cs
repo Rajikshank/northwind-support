@@ -19,6 +19,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddScoped<SupportDesk.Application.Features.Tickets.TriageService>();
+        services.AddScoped<SupportDesk.Application.Features.Tickets.EscalateTicketHandler>();
         services.AddScoped<RaiseTicketCommandHandler>();
         services.AddScoped<ChangeTicketStatusCommandHandler>();
         services.AddScoped<AssignTicketCommandHandler>();

@@ -27,6 +27,9 @@ builder.Services.AddCors(options => options.AddPolicy(
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddOptions<SupportDesk.Domain.Aggregates.Tickets.SlaPolicy>()
+    .BindConfiguration("Sla").Validate(x => x.IsValid(), "Invalid SLA configuration.").ValidateOnStart();
+builder.Services.AddSingleton(sp => sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SupportDesk.Domain.Aggregates.Tickets.SlaPolicy>>().Value);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 

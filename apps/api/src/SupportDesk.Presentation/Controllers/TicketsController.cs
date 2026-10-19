@@ -56,4 +56,17 @@ public sealed class TicketsController : ControllerBase
         [FromServices] AssignTicketCommandHandler handler,
         CancellationToken ct) =>
         handler.HandleAsync(id, request, ct);
+    [HttpPost("{id:int}/escalate")]
+    public Task<SupportDesk.Application.Features.Tickets.EscalationResult> Escalate(int id,
+        SupportDesk.Application.Features.Tickets.EscalateRequest request,
+        [FromServices] SupportDesk.Application.Features.Tickets.EscalateTicketHandler handler, CancellationToken ct) => handler.HandleAsync(id, request, ct);
+
+    [HttpGet("{id:int}/escalations")]
+    public async Task<IReadOnlyList<SupportDesk.Domain.Aggregates.Tickets.TicketEscalation>> History(int id,
+        [FromServices] SupportDesk.Application.Abstractions.ITriageData data,
+        [FromServices] GetTicketQueryHandler read, CancellationToken ct)
+    {
+        await read.HandleAsync(id, ct);
+        return await data.HistoryAsync(id, ct);
+    }
 }

@@ -1,3 +1,4 @@
+import { EscalationPanel } from './components/EscalationPanel';
 import { Link, useParams } from 'react-router-dom';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { Spinner } from '../../components/Spinner';
@@ -51,6 +52,7 @@ export function TicketDetailPage() {
           </div>
 
           <StatusActions ticket={ticket} onUpdated={setData} />
+          <EscalationPanel key={ticket.id} ticket={ticket} agents={reference.data?.agents ?? []} onUpdated={setData} />
         </div>
 
         <aside className="detail-layout__side">

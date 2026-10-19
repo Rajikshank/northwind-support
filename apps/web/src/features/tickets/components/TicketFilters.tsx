@@ -1,4 +1,5 @@
 import type {
+  SlaStatus,
   Agent,
   Category,
   CustomerListItem,
@@ -34,6 +35,15 @@ export function TicketFilters({
   return (
     <section className="filters" aria-label="Ticket filters">
       <div className="filters__row">
+        <div className="field">
+          <label htmlFor="filter-sla">SLA status</label>
+          <select id="filter-sla" value={filters.slaStatus ?? ''}
+            onChange={(event) => onChange({slaStatus: (event.target.value || undefined) as SlaStatus | undefined})}>
+            <option value="">All SLA states</option>
+            <option value="WithinSla">Within SLA</option><option value="AtRisk">At risk</option>
+            <option value="Breached">Breached</option><option value="Met">Met</option><option value="NotApplicable">No SLA</option>
+          </select>
+        </div>
         <div className="field">
           <label className="field__label" htmlFor="filter-search">
             Search

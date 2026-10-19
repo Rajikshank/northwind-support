@@ -18,7 +18,8 @@ public sealed class RaiseTicketCommandHandler(
     IUnitOfWork unitOfWork,
     IClock clock,
     GetTicketQueryHandler getTicket,
-    ILogger<RaiseTicketCommandHandler> logger)
+    ILogger<RaiseTicketCommandHandler> logger,
+    SupportDesk.Application.Features.Tickets.TriageService triage)
 {
     /// <exception cref="NotFoundException">The customer or the category does not exist.</exception>
     public async Task<TicketDetailDto> HandleAsync(CreateTicketRequest request, CancellationToken ct)
@@ -33,8 +34,6 @@ public sealed class RaiseTicketCommandHandler(
             throw new NotFoundException("Category", request.CategoryId);
         }
 
-        // The response window is still worked out by hand by the team lead, so a new ticket
-        // starts with no due date and no owner.
         var ticket = Ticket.Raise(
             await tickets.NextReferenceAsync(ct),
             request.Title,
@@ -44,6 +43,7 @@ public sealed class RaiseTicketCommandHandler(
             request.RequestedPriority ?? TicketPriority.Medium,
             clock.UtcNow);
 
+        var decision = await triage.ApplyAsync(ticket, ticket.CreatedAtUtc, false, ct);
         await tickets.AddAsync(ticket, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
@@ -51,6 +51,8 @@ public sealed class RaiseTicketCommandHandler(
             "Ticket {Reference} raised for customer {CustomerId} in category {CategoryId}.",
             ticket.Reference, ticket.CustomerId, ticket.CategoryId);
 
-        return await getTicket.HandleAsync(ticket.Id, ct);
+        var result = await getTicket.HandleAsync(ticket.Id, ct);
+        result.Triage = decision;
+        return result;
     }
 }

@@ -16,6 +16,8 @@ public sealed record TicketQuery
     /// <summary>Matches the ticket title, its reference, or the customer name.</summary>
     public string? Search { get; init; }
 
+    public SlaStatus? SlaStatus { get; init; }
+
     public TicketStatus? Status { get; init; }
 
     public TicketPriority? Priority { get; init; }

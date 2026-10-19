@@ -33,13 +33,13 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 
         builder.Property(t => t.Status).HasConversion<int>();
 
-        builder.Property(t => t.CreatedAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(t => t.CreatedAtUtc).HasColumnType("datetime2(7)");
 
-        builder.Property(t => t.UpdatedAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(t => t.UpdatedAtUtc).HasColumnType("datetime2(7)");
 
-        builder.Property(t => t.DueAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(t => t.DueAtUtc).HasColumnType("datetime2(7)");
 
-        builder.Property(t => t.ResolvedAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(t => t.ResolvedAtUtc).HasColumnType("datetime2(7)");
 
         // A ticket is never silently detached from the rows that give it meaning.
         builder.HasOne<Customer>()
@@ -57,6 +57,7 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .HasForeignKey(t => t.AssignedAgentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Property(t => t.SlaAtRiskAtUtc).HasColumnType("datetime2(7)");
         builder.Ignore(t => t.IsOpen);
 
         builder.HasIndex(t => t.Reference).IsUnique().HasDatabaseName("UQ_Tickets_Reference");

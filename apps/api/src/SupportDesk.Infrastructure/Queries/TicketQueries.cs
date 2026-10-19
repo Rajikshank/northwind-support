@@ -18,11 +18,10 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
 {
     public async Task<PagedResult<TicketListItemDto>> GetPagedAsync(TicketQuery query, CancellationToken ct)
     {
-        var tickets = ApplyFilters(TicketsWithLabels(), query);
+        var now = clock.UtcNow;
+        var tickets = ApplyFilters(TicketsWithLabels(), query, now);
 
         var totalCount = await tickets.CountAsync(ct);
-
-        var now = clock.UtcNow;
 
         var items = await ApplySort(tickets, query)
             .Skip((query.Page - 1) * query.PageSize)
@@ -41,7 +40,10 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = SlaEvaluator.Evaluate(x.Ticket.DueAtUtc, x.Ticket.ResolvedAtUtc, now)
+                SlaStatus = x.Ticket.DueAtUtc == null ? SlaStatus.NotApplicable
+                    : x.Ticket.ResolvedAtUtc != null ? (x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
+                    : now > x.Ticket.DueAtUtc ? SlaStatus.Breached
+                    : x.Ticket.SlaAtRiskAtUtc != null && now >= x.Ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla
             })
             .ToListAsync(ct);
 
@@ -70,7 +72,10 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = SlaEvaluator.Evaluate(x.Ticket.DueAtUtc, x.Ticket.ResolvedAtUtc, now)
+                SlaStatus = x.Ticket.DueAtUtc == null ? SlaStatus.NotApplicable
+                    : x.Ticket.ResolvedAtUtc != null ? (x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
+                    : now > x.Ticket.DueAtUtc ? SlaStatus.Breached
+                    : x.Ticket.SlaAtRiskAtUtc != null && now >= x.Ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla
             })
             .FirstOrDefaultAsync(ct);
     }
@@ -97,7 +102,10 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = SlaEvaluator.Evaluate(x.Ticket.DueAtUtc, x.Ticket.ResolvedAtUtc, now)
+                SlaStatus = x.Ticket.DueAtUtc == null ? SlaStatus.NotApplicable
+                    : x.Ticket.ResolvedAtUtc != null ? (x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
+                    : now > x.Ticket.DueAtUtc ? SlaStatus.Breached
+                    : x.Ticket.SlaAtRiskAtUtc != null && now >= x.Ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla
             })
             .ToListAsync(ct);
     }
@@ -112,8 +120,13 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
         from agent in db.Set<Agent>().Where(a => a.Id == ticket.AssignedAgentId).DefaultIfEmpty()
         select new TicketWithLabels { Ticket = ticket, Customer = customer, Category = category, Agent = agent };
 
-    private static IQueryable<TicketWithLabels> ApplyFilters(IQueryable<TicketWithLabels> source, TicketQuery query)
+    private static IQueryable<TicketWithLabels> ApplyFilters(IQueryable<TicketWithLabels> source, TicketQuery query, DateTime now)
     {
+        if (query.SlaStatus is { } sla)
+            source = source.Where(x => (x.Ticket.DueAtUtc == null ? SlaStatus.NotApplicable
+                : x.Ticket.ResolvedAtUtc != null ? (x.Ticket.ResolvedAtUtc <= x.Ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
+                : now > x.Ticket.DueAtUtc ? SlaStatus.Breached
+                : x.Ticket.SlaAtRiskAtUtc != null && now >= x.Ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla) == sla);
         if (query.Status is { } status) source = source.Where(x => x.Ticket.Status == status);
         if (query.Priority is { } priority) source = source.Where(x => x.Ticket.Priority == priority);
         if (query.CategoryId is { } category) source = source.Where(x => x.Ticket.CategoryId == category);

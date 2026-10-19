@@ -6,10 +6,11 @@ namespace SupportDesk.Domain.Aggregates.Tickets;
 /// </summary>
 public static class SlaEvaluator
 {
-    public static SlaStatus Evaluate(DateTime? dueAtUtc, DateTime? resolvedAtUtc, DateTime nowUtc) =>
+    public static SlaStatus Evaluate(DateTime? dueAtUtc, DateTime? resolvedAtUtc, DateTime nowUtc, DateTime? atRiskAtUtc = null) =>
         dueAtUtc is null ? SlaStatus.NotApplicable
         : resolvedAtUtc is not null
             ? (resolvedAtUtc <= dueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
         : nowUtc > dueAtUtc ? SlaStatus.Breached
+        : atRiskAtUtc is not null && nowUtc >= atRiskAtUtc ? SlaStatus.AtRisk
         : SlaStatus.WithinSla;
 }
