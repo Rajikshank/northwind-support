@@ -350,3 +350,120 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [TicketEscalation] DROP CONSTRAINT [FK_TicketEscalation_Agents_FromAgentId];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [TicketEscalation] DROP CONSTRAINT [FK_TicketEscalation_Agents_ToAgentId];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [TicketEscalation] DROP CONSTRAINT [FK_TicketEscalation_Tickets_TicketId];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [TicketEscalation] DROP CONSTRAINT [PK_TicketEscalation];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    EXEC sp_rename N'[TicketEscalation]', N'TicketEscalations', 'OBJECT';
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    EXEC sp_rename N'[TicketEscalations].[IX_TicketEscalation_ToAgentId]', N'IX_TicketEscalations_ToAgentId', 'INDEX';
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    EXEC sp_rename N'[TicketEscalations].[IX_TicketEscalation_TicketId_EscalatedAtUtc_Id]', N'IX_TicketEscalations_TicketId_EscalatedAtUtc_Id', 'INDEX';
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    EXEC sp_rename N'[TicketEscalations].[IX_TicketEscalation_FromAgentId]', N'IX_TicketEscalations_FromAgentId', 'INDEX';
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [Tickets] ADD [Version] uniqueidentifier NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000';
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [TicketEscalations] ADD CONSTRAINT [PK_TicketEscalations] PRIMARY KEY ([Id]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [TicketEscalations] ADD CONSTRAINT [FK_TicketEscalations_Agents_FromAgentId] FOREIGN KEY ([FromAgentId]) REFERENCES [Agents] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [TicketEscalations] ADD CONSTRAINT [FK_TicketEscalations_Agents_ToAgentId] FOREIGN KEY ([ToAgentId]) REFERENCES [Agents] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    ALTER TABLE [TicketEscalations] ADD CONSTRAINT [FK_TicketEscalations_Tickets_TicketId] FOREIGN KEY ([TicketId]) REFERENCES [Tickets] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261020010300_AlignEscalationTableAndGuardTicketUpdates'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261020010300_AlignEscalationTableAndGuardTicketUpdates', N'10.0.12');
+END;
+
+COMMIT;
+GO
+

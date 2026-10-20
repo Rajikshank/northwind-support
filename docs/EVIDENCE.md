@@ -1,87 +1,37 @@
 # Verification evidence
 
-Updated 20 October 2026. The test names below link to runnable checks. Live API/browser reports now use the final Docker API and SQL Server; fixture screenshots remain labelled separately.
+Verified locally on 20 October 2026. These are observed results, not a claim of production readiness. No code was published during this review.
 
-## Final available checks
+## Required behaviour
 
-| Check | Observed result |
+| Assessment area | Evidence and result |
 | --- | --- |
-| `npm test` | PASS: 49 backend tests + 4 architecture/model tests + 27 frontend tests (80 total) |
-| Frontend suite under compatible Node 24.19.0 | PASS: 27 tests |
-| `npm run build` | PASS: API and production frontend; no backend warnings/errors |
-| `npm run lint` / `npm run typecheck` | PASS |
-| `npm run format:check` | PASS: no formatting changes required |
-| `npm audit` | Zero known vulnerabilities from configured registry |
-| `dotnet list package --vulnerable --include-transitive` | No vulnerable packages reported in all six projects |
-| EF idempotent SQL Server migration script | Generated successfully: [migrations.sql](evidence/migrations.sql); all three migrations applied by application startup on a fresh SQL Server volume |
-| Chromium browser fixture smoke | PASS: login redirect/login, filter request, escalation/history refresh, triage feedback, 390px overflow assertion, no page errors |
-| Visual inspection | Login, escalation form/detail and mobile layout inspected; mobile account header wrapping corrected and recaptured |
-| Docker build/start/image size/cache/user | PASS: 454,857,234 bytes; app user; no SDK/Development settings; restore CACHED. [Runtime record](evidence/docker-runtime.json) |
-| SQL Server clean migration/seed/collation | PASS: 40 seeded tickets; three migrations; SQL_Latin1_General_CP1_CI_AS. Live filtering/count checks passed; execution-plan benchmarking not performed |
+| DEFECT-117 | Request regression failed on original code: expected one fetch, received zero. After repair, dropdowns request immediately, search debounces, reset cancels pending search and obsolete responses are ignored. |
+| FL-1–6 | Exact/combined filters, trimmed customer/reference search, unassigned, count/paging and SQL-side SLA filter pass relational and live SQL Server checks. Original exact-High regression returned Critical before its fix. |
+| BR-1–6 | All priority/tier windows, floor, forced Critical, active/specialist/capacity/tie rules and normal unassigned creation pass. |
+| BR-7 | One-step escalation, from-now deadline, kept/replaced/null owner, snapshots, newest-first history, token actor and invalid/Critical/Resolved/Closed guards pass. Injected history failure rolls back ticket changes. |
+| BR-8 | Fixed-clock tests cover risk threshold, exactly due, one tick late and resolved timing. Filter and projection agree for every SLA state. SQL Server reports datetime2(7) for all five ticket timestamps. |
+| Task 2 UI | Validation prevents invalid calls, 409 preserves the ticket, five SLA labels are distinguishable; actual browser create/escalate/history/mobile checks pass. |
+| AU-1–13 | Salted hashing, generic wrong/unknown/inactive failure, valid/invalid/expired tokens, central protection, actor spoof rejection, redirect/header/401/logout and previous successful login pass. |
+| DK-1–8 | Actual multi-stage build, root context/ignore rules, runtime configuration, app user, port 8080→5080, SQL dependency, migrations/seed, anonymous health and Vite proxy verified. |
 
-## Red-before / green-after evidence
+## Tests and checks
 
-- Original backend baseline: 26 unit tests and 4 architecture tests passed. Original frontend: 2 tests passed.
-- `useTicketList.requests.test.ts`: original code failed the status-only request assertion, **expected one fetch, received zero**. It passes after the effect observes the full committed query. Search debounce remained covered.
-- `TicketQueryTests.FiltersBeforeCountingAndPaging_WithExactPriorityAndCustomerSearch`: original code returned **Critical** for a **High** filter. It passes after predicates are composed before count and paging.
-- The new SLA policy test initially could not compile because the policy did not exist, then passed after implementation. Later tests were added incrementally; not every test was written before production code, and no blanket TDD claim is made.
+- **55 backend tests + 5 architecture/model tests + 27 frontend tests = 87 passing.** No skips. Commands: `dotnet test`; `npm run test --workspace apps/web`.
+- `npm run build`: passes, zero backend warnings/errors. `npm run lint`, `npm run typecheck` and `npm run format:check` pass.
+- Stale-write regressions initially failed because no conflict was raised. After the concurrency guard, an old escalation cannot overwrite another escalation/resolution or append a misleading history row. The required table-name regression also failed before the mapping/migration fix.
+- [Live API report](evidence/live-api.json): **40 checks** against Docker API/SQL Server. Repeat: `pwsh -File scripts/verify-live.ps1`.
+- [Live browser report](evidence/live-browser.json): **8 checks**, actual API through Vite, no mocks. Repeat with Vite and Playwright available: `node scripts/browser-live.mjs`. Screenshots were visually inspected: [login](evidence/live-login.png), [filter](evidence/live-filter.png), [triage](evidence/live-triage.png), [history](evidence/live-escalation.png), [390px mobile](evidence/live-mobile.png).
+- The earlier dependency audit reported zero npm advisories and no vulnerable NuGet packages in all six projects. Dependency versions were unchanged during this review.
 
-## Requirement coverage
+## SQL Server and Docker
 
-| Requirement | Runnable evidence |
-| --- | --- |
-| DEFECT-117: dropdowns immediate; search debounced; SLA extension | `apps/web/src/features/tickets/hooks/useTicketList.requests.test.ts`, `useTicketList.test.ts`: real URL assertions for each filter, page/search timing, reset and obsolete response |
-| FL-1–6: exact/combined/search/unassigned/count/paging | `TicketQueryTests`: High/Low, customer-name and reference search, blank search, contradictory assignment filters, status/customer/category exclusion and filtered count |
-| BR-1–6: shared triage rules | `TriagePolicyTests`, `TriageTests`: priority/tier windows, floor, forced Critical, workload eligibility, specialists, limits, inactive, deterministic ties and no eligible candidate |
-| BR-7: escalation/history/status guards | `TriageTests`, `DeskApiTests.CreateEscalateAndHistoryUseTheAuthenticatedActor`: step/from-now timing, owner retained, snapshots, required reason, Critical rejection, unknown history and normal unassigned 201 |
-| Atomic history and ticket update | `DeskApiTests.FailedHistoryInsertRollsBackTheTicketChange`: injected SQLite trigger failure returns 500, original priority/deadline remain, history stays empty |
-| BR-8: SQL status/filter parity | `TriagePolicyTests.SlaBoundariesAreExact` and `TicketQueryTests.SqlSlaFilterAndProjectionAgreeAtEveryBoundary`: exact threshold/due/tick boundaries, every status, filtered counts and executed SQL containing CASE/WHERE/COUNT |
-| Task 2 frontend | `EscalationPanel.test.tsx`: short reason never calls API, 409 does not update ticket, all five SLA labels; browser script confirms success refresh and create feedback |
-| AU-1–5: password/login/me | `AuthenticationTests`, `DeskApiTests`: salted password verification, correct/wrong/unknown/inactive login, generic messages and successful /me |
-| AU-6–8: structural protection and actor | `DeskApiTests`: anonymous reads/writes rejected, valid/invalid/expired bearer tokens, protected endpoint families, spoofed body actor ignored |
-| AU-9–13: session/client/routes | `session.test.tsx`: anonymous redirect, central header and 401 reset, safe same-origin return path; browser checks login and signed-in shell |
-| Additional previous-login requirement | `AuthenticationTests.LoginChangesTimestampOnlyOnSuccessAndReturnsPreviousLogin`: first/next success, previous timestamp, rejected login unchanged |
-| Migrations and boundaries | Existing `PersistenceModelTests` and `LayerDependencyTests` pass; SQL Server script generated |
-| DK-1–8 | Dockerfile/ignore/Compose verified with actual build, fresh-volume startup, cached rebuild, runtime file/user inspection and anonymous health 200. Outage retest after timeout correction blocked by execution policy. |
+[Runtime record](evidence/docker-runtime.json) contains the measured results. The API image is **454,865,964 bytes (455 MB)** versus the previously measured matching SDK **1,303,849,917 bytes**: approximately 65% smaller. `/app` is 82 MB. Runtime `whoami` is `app`; SDK, .env and Development settings are absent.
 
-SQLite tests use a relational database, not EF InMemory. HTTP integration uses the actual application composition root, controllers, validation, error middleware and JWT middleware, replacing only the database provider with SQLite. It is not proof of SQL Server-specific behaviour. Concurrent capacity selection/reference allocation and concurrent timestamp stress are not verified and are not claimed as load-safe.
+The original run started from an empty volume. This review additionally applied all **four migrations** to a separate empty SQL Server database, seeded **40 tickets**, and passed the same 40 API checks there. Upgrading the existing database preserved **46 tickets and 4 history rows**. The forward migration renames the history table to `TicketEscalations`. The reviewed [idempotent script](evidence/migrations.sql) includes every migration. Collation: SQL_Latin1_General_CP1_CI_AS.
 
-## Browser evidence
+Changing API source reused the Docker restore layer and reran publish. An isolated temporary API pointed at an unreachable database returned **503 in 5.43 seconds**; the normal API remained healthy at 200. This safely completes the health-failure check that previously required an interrupted database. Temporary containers/database were removed. Cleanup reclaimed **1.828 GB** of unused build cache; only the required API/SQL images and existing database volume remain.
 
-The [smoke script](../scripts/browser-smoke.mjs) drives the real frontend with HTTP fixtures. It does not connect to a running SQL Server API. Screenshots contain only fixture data:
+## Limits
 
-- [Login](evidence/login-desktop.png)
-- [Ticket list](evidence/tickets-desktop.png)
-- [Escalation form](evidence/escalation-form-desktop.png)
-- [Escalation/history](evidence/escalation-desktop.png)
-- [Mobile detail](evidence/escalation-mobile.png)
-- [Unassigned triage result](evidence/triage-result-desktop.png)
-
-Browser setup failures were corrected before the successful run: the first dev-server invocation passed an unintended root argument, and the first fixture glob also matched source modules. The final fixture prefix is restricted to the actual API URL. A mobile header that technically fit the screen still looked squeezed; visual review prompted wrapping rather than relying only on an overflow assertion.
-
-## Dependency/environment observations
-
-The initial npm lockfile contained vulnerable source-map-js 1.2.1; a targeted lockfile update resolved the advisory without upgrading the app framework. Initial .NET restores reported vulnerable transitive Pkcs 9.0.11. The central pin is now 10.0.13, based on Microsoft's published patched version, and the final package audit is clean. The integration-test host required Logging.Abstractions 10.0.13; its central version was aligned.
-
-The shell's system Node 24.13.1 is below some locked dependencies' supported patch level. Tests also passed using an available compatible Node 24.19.0 runtime. .NET 10.0.402 was present but missing from the initial shell PATH. README and package engines now state compatible Node versions. No machine-specific runtime path is part of the application or public run instructions.
-
-## Deferred completion checklist
-
-After freeing storage: build/start with a disposable empty SQL volume; apply migrations and verify seeded logins/data; inspect actual filtered count/page SQL and SLA boundaries on SQL Server; check database-unavailable health; record restore-layer cache reuse after a source edit; measure image versus matching SDK size; run `whoami`; verify browser via the container proxy. Do not run volume deletion against an existing database just to produce evidence. Until these pass, Task 4 and full SQL Server runtime verification are unfinished.
-
-## Resumption check
-
-Later on 19 October, C: had about 8.5 GB free. Docker Desktop still failed to start: its backend reported that the temporary `Docker/run/dockerInference` socket could not be removed/accessed. A normal startup retry and termination of only the docker-desktop WSL distribution did not restore the engine. Automated removal of the zero-byte runtime socket was blocked by tool policy, so the user was given the precise manual cleanup step. No images, volumes or database files were deleted.
-
-`scripts/verify-live.ps1` now provides repeatable live SQL-backed API checks and a credential-free JSON report. `scripts/browser-live.mjs` provides a real browser/API workflow through the Vite proxy. They were initially prepared without a running backend; both subsequently passed against SQL Server, as recorded below.
-
-## Live SQL Server and container run — 20 October
-
-- [Live API report](evidence/live-api.json): 40 passing checks using the actual JWT middleware, controllers and SQL Server. Includes generic failed login, inactive login, protected endpoints, previous login, exact/combined/search filters, count/paging, triage, escalation guards and authenticated history actor.
-- [Live browser report](evidence/live-browser.json): 8 passing checks through Vite's API proxy, with no HTTP mocks. Covers login redirect, status request, create/triage, escalation/history refresh, 390px overflow, logout and page errors. Scripts create development test tickets.
-- Live screenshots: [login](evidence/live-login.png), [filter](evidence/live-filter.png), [triage](evidence/live-triage.png), [escalation](evidence/live-escalation.png), [mobile](evidence/live-mobile.png). Desktop/mobile escalation screenshots were visually inspected.
-- SQL Server reported migrations `20260926183612_InitialCreate`, `20261019132018_TicketEscalationAndSla`, `20261019132532_AgentCredentials`. A restart retained data and did not duplicate seed records.
-- A source-only cache experiment reused restore and reran publish; a subsequent final-image rebuild reported restore and publish CACHED. Unused build cache was then pruned; future cold builds need to download SDK layers again.
-- The first SQL image had a corrupt archive after disk exhaustion. The tested CU27 image starts successfully. This is environment recovery evidence, not an application test failure.
-- A database-down health probe returned 503 after 119.88 seconds because connection retries were slow. Registration now bounds the check to five seconds. Automated tests and normal live health passed, but automatic approval review rejected the final temporary SQL shutdown with “blocked by policy”; outage timing and recovery after this change remain unverified.
-- Rechecked after the timeout change: backend 49 + architecture 4 tests, frontend 27 tests, production build, lint and typecheck passed. Format verification identified mixed line endings in Program.cs; normalized to LF and reran the check.
+The live scripts create tickets and change workloads; repeated runs can legitimately leave tickets unassigned. Use isolated development data when demonstrating original seed capacity. SQLite is not proof of SQL Server load behaviour; no execution-plan/load benchmark or parallel SQL Server stress claim is made. The inherited reference-allocation and cross-ticket capacity races remain documented. The optional SLA report is excluded. The candidate still needs to review the implementation and provide an honest time breakdown before submission.
