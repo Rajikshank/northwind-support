@@ -10,5 +10,5 @@ apps/api/tests
 artifacts
 **/*.log
 **/TestResults
-docs
+assets/screenshots
 ASSIGNMENT_CANDIDATE.pdf

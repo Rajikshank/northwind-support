@@ -1,10 +1,10 @@
 # Northwind Support Desk
 
-.NET 10 API, React 19/TypeScript and SQL Server 2022. The four assessment tasks are implemented locally: filter repair, automatic triage/escalation/SLA, agent authentication, and a Docker API. Verification details are in [EVIDENCE.md](docs/EVIDENCE.md); design and AI-use notes are in [APPROACH.md](APPROACH.md).
+.NET 10 API, React/TypeScript and SQL Server 2022. This implementation covers the four assessment tasks and previous-successful-login tracking. The optional SLA report is excluded. Design trade-offs and AI-use notes are in [APPROACH.md](APPROACH.md).
 
-## Run locally
+## Run
 
-Install Git, Docker Desktop with Linux containers, .NET 10 SDK and Node 22.22.2+ or 24.15+ (the locked test dependencies require these patch levels). The repository's `.nvmrc` selects Node 22.
+Prerequisites: Git, Docker Desktop with Linux containers, .NET 10 SDK, and Node 22.22.2+ or 24.15+. The locked test dependencies require these Node patch levels.
 
 ```powershell
 # Copy only if .env does not already exist.
@@ -20,45 +20,50 @@ $env:VITE_API_PROXY_TARGET = 'http://localhost:5080'
 npm run web
 ```
 
-Open http://localhost:5173. API: http://localhost:5080; Development Swagger: http://localhost:5080/swagger. Anonymous `GET /health` checks database reachability. Development startup applies migrations and seeds 40 demo tickets, six agents, six customers and five categories. Subsequent starts retain data and fill missing fixture hashes/SLA boundaries without resetting existing passwords.
+Web: http://localhost:5173. API: http://localhost:5080. Development Swagger: http://localhost:5080/swagger. Anonymous `/health` checks the database. Development startup migrates and seeds 40 tickets, six agents, six customers and five categories. Restarting retains data and existing password hashes.
 
-**Development login:** `alex.turner@northwind-support.example` / `LocalDemo-Only!2026`. Other active seeded agents share this obvious local fixture password; inactive Yuki cannot sign in. Fixture passwords and keys must never be used in production.
+**Local login:** `alex.turner@northwind-support.example` / `LocalDemo-Only!2026`. Active seeded agents share this obvious development fixture password; inactive Yuki cannot sign in. Replace fixture passwords and signing keys outside Development.
 
-To run the API outside Docker, start only SQL with `docker compose up -d sqlserver`, then:
+For a host API, start only SQL with `docker compose up -d sqlserver`, run `dotnet tool restore`, set `$env:Jwt__SigningKey = 'LocalFixture-Only-Change-Before-Production-2026'`, then `npm run api`. Point Vite at `http://localhost:5043`. Compose's `.env` is not automatically exported into `dotnet run`.
 
-```powershell
-dotnet tool restore
-$env:Jwt__SigningKey = 'LocalFixture-Only-Change-Before-Production-2026'
-npm run api
+## Decisions
+
+**Task 1.** DEFECT-117 was an effect reading every filter but subscribing only to search/pagination, so status changes sent no request. The hook now observes the complete committed query, requests dropdown changes immediately, debounces only search for 300 ms, and ignores cancelled/obsolete responses. The actual-request regression failed before the fix: one fetch expected, zero received. Defect and backend filtering were committed separately.
+
+`TicketQueries.ApplyFilters` applies exact matches, unassigned-only and trimmed search before SQL count/paging. Search is OR across title/reference/customer, AND with other filters. Reads are untracked, projected and ordered with an Id tie-break. The SLA CASE expression is shared by filtering/projection. Tests inspect relational SQL and verify live SQL Server results. Add a typed filter, serializer entry and predicate; no effect dependency change. Substring search can scan; no speculative index was added.
+
+**Task 2.** Keep the supplied layered monolith: Domain policies hold SLA/assignment rules; Application handlers coordinate them; Infrastructure owns EF queries/transactions; Presentation owns HTTP. Shared policies, repository/unit-of-work writes and separate read projections fit this application. A mediator framework or event bus would add work without improving the required behaviour.
+
+Priority defaults to Medium; category flags force Critical or require specialists. Configurable windows are Critical 4h, High 8h, Medium 24h, Low 72h; Premium multiplies by 0.5 with a 1h floor. Choose active eligible agents strictly below capacity, fewest open tickets, then lowest Id. Nobody eligible is a normal unassigned 201 with a reason. An existing owner at capacity is ineligible under the literal “strictly below” rule. Manual assignment retains the supplied explicit override behaviour.
+
+Escalation raises one level, recomputes from now, rechecks ownership and appends immutable before/after history. Invalid reason is 400, unknown ticket 404, Critical/Resolved/Closed 409. A ticket version rejects stale updates. Serializable transactions protect workload reads through assignment/history commit; confirmed SQL deadlocks retry the whole decision with fresh tracked state. Uncertain commit failures are never automatically replayed. A database sequence allocates references across requests/processes, starts beyond existing/seeded references, and can leave harmless gaps after failures.
+
+SLA status is derived with an injectable clock. Deadline/risk-boundary timestamps preserve the promised window after escalation/configuration changes. Historical missing boundaries use current settings. No due date means No SLA; resolved on/before due is Met; exactly due is At risk, one tick later Breached. Timestamps use datetime2(7). `TicketEscalations` has restricted foreign keys and `(TicketId, EscalatedAtUtc DESC, Id DESC)` for newest-first history; existing ticket indexes remain. Forward migrations preserve existing rows.
+
+**Task 3.** One Agent is one account, so credential fields belong on Agent. Identity PasswordHasher supplies salted hashes. Unknown/wrong/inactive credentials have the same 401 response. JWTs last 30 minutes, with signature, algorithm, issuer, audience and expiry validation plus 15 seconds of clock skew. The signing key comes from runtime configuration. Central fallback authorization protects all endpoints; login/health are explicit exceptions and Swagger is open in Development. Escalation actors come from token subjects, never request bodies.
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant A as API
+    participant D as Database
+    B->>A: Email and password
+    A->>D: Load agent and saved password hash
+    D-->>A: Account
+    A->>A: Verify password and active status
+    A->>D: Update successful-login timestamp
+    A-->>B: JWT, expiry and previous successful login
+    B->>A: API request with bearer JWT
+    A->>A: Validate token and central authorization
+    A-->>B: Result, or 401
+    Note over B: On 401 clear session and show login
 ```
 
-The local launch profile exposes HTTP 5043 / HTTPS 7043. Point `VITE_API_PROXY_TARGET` at `http://localhost:5043` for HTTP development. Compose `.env` values are not automatically exported into `dotnet run`; set overrides in the process environment.
+The client keeps the token in memory: refreshing requires sign-in, and persistent token storage is avoided. This does not eliminate XSS. Protected routes preserve safe internal destinations; logout/401 clears the session. Old requests cannot overwrite a newer session. Failed logins leave the saved login timestamp unchanged; successful logins use a bounded compare-and-swap. A frontend route guard improves navigation; API authorization enforces access.
 
-## Decisions and behaviour
+**Task 4.** The root-context multistage Dockerfile restores project metadata before source, then publishes into a non-root ASP.NET image on 8080, mapped to localhost:5080. SDK, sources, EF design-time tooling, `.env` and Development settings are excluded. Runtime variables supply SQL/JWT/SLA configuration; see `.env.example`. Compose uses service DNS and waits for SQL health. Globalization is retained for SQL; trimming/AOT was rejected because EF/validation use reflection.
 
-**Defect and filtering.** DEFECT-117 came from an effect that read all filters but subscribed only to search and pagination. A status change therefore sent no request. The hook now observes the complete committed query; dropdowns request immediately, search alone waits 300 ms, and obsolete responses are cancelled/discarded. The request regression failed on the original code (one fetch expected, zero received). The defect fix and backend filtering have separate commits.
-
-`TicketQueries.ApplyFilters` adds exact matches, unassigned-only and trimmed search before SQL count/paging. Search is OR across title/reference/customer name, AND with other filters. Blank search is ignored. Reads are untracked, projected and ordered with an Id tie-break. The SLA expression is shared by filter and projection; relational tests inspect CASE/WHERE/count execution, and live SQL Server checks verify results. A further filter needs a typed field, serializer and predicate; no effect dependency change. Substring search can scan; no large-dataset performance claim is made.
-
-**Architecture.** Keep the supplied layered monolith. Shared SLA/assignment policies keep business decisions out of HTTP/UI code. Application handlers orchestrate these policies for both create and escalate. Repositories and the unit of work commit mutations atomically; separate query projections serve reads. These three choices fit the existing design without a mediator framework, generic repository framework or event bus.
-
-Priority defaults to Medium; category flags can force Critical. Configurable windows are Critical 4h, High 8h, Medium 24h and Low 72h; Premium multiplies by 0.5 with a 1h floor. Active eligible agents must be strictly below capacity; choose fewest open tickets, then lowest Id. Billing/Outage/Security require specialists through flags, not name checks. No eligible owner is a normal unassigned **201** with a reason. Existing manual assignment remains an explicit override of automatic specialization rules.
-
-Escalation raises one level, recomputes from escalation time, keeps an eligible owner or reassigns, and appends before/after history. Critical/Resolved/Closed return descriptive **409**, invalid reason **400**, unknown ticket **404**. At-capacity owners are ineligible, following the rule's literal “strictly below” wording. A concurrency token rejects stale ticket writes with 409; failed writes roll back their history too.
-
-**SLA and database.** Status is derived using an injectable clock. The persisted deadline and risk boundary snapshot the promised window, including after escalation; configuration changes apply to future triage. Historical missing boundaries are reconstructed from current priority/tier/settings. No deadline means No SLA; resolution on/before due is Met; unresolved exactly due is At risk and one tick later Breached. Timestamps use datetime2(7).
-
-Migrations add `TicketEscalations`, credential/login fields, risk timing and a ticket concurrency token. The history index `(TicketId, EscalatedAtUtc DESC, Id DESC)` supports newest-first reads; restricted foreign keys preserve references. Existing ticket indexes remain. A forward migration renames the earlier singular history table without discarding data.
-
-**Authentication.** One Agent is one account, so credentials live on Agent. Identity PasswordHasher supplies salted hashes. Unknown/wrong/inactive logins have the same 401 message. JWTs last 30 minutes with signature, issuer, audience and lifetime validation, plus 15 seconds of clock skew. Runtime configuration supplies the signing key. A fallback policy protects every API endpoint; login/health are explicit exceptions, Swagger is open in Development. Escalation takes `agent:<subject-id>` from the token.
-
-The central client keeps the token in memory and attaches it to requests. Refresh requires sign-in; this avoids persistent token storage but does not eliminate XSS. Protected routes preserve a validated internal destination. Logout/401 clears the session. Previous successful login is shown after sign-in; failed attempts leave it unchanged, and a bounded compare-and-swap handles overlapping timestamp updates.
-
-## Docker and verification
-
-The root-context Dockerfile restores project metadata before copying source, then publishes into a non-root ASP.NET runtime. EF design-time tooling, SDK, sources, `.env` and Development settings are excluded. Runtime variables supply connectivity, JWT and SLA overrides; see `.env.example`. SQL Server uses the tested CU27 Ubuntu 22.04 tag and service DNS; API startup waits for SQL health. SQL globalization support is retained; trimming/AOT would risk EF/validation reflection.
-
-The measured API image is approximately **455 MB**, about **65% smaller** than the measured 1.304 GB SDK image. `/app` is 82 MB and `whoami` returns `app`. Fresh-volume migration/seed and source-edit restore caching are checked separately from normal API/browser tests; current figures and results are recorded in the evidence file.
+## Verify
 
 ```powershell
 npm test
@@ -66,15 +71,27 @@ npm run build
 npm run lint
 npm run typecheck
 npm run format:check
-npm audit
 ```
 
-Backend tests use xUnit/Moq, FixedClock/TicketBuilder, relational SQLite and actual HTTP/JWT middleware. Frontend tests use Vitest/RTL. Repeat live checks with `pwsh -File scripts/verify-live.ps1`; with Vite running and Playwright available, run `node scripts/browser-live.mjs`. These scripts create development tickets and change workloads. Screenshots and concise JSON results are in `docs/evidence/`.
+**Verified on 20 October 2026:** 65 backend + 5 architecture + 33 frontend tests pass (103 total, SQL Server enabled). Build, lint, type checks and formatting pass.
 
-In production, apply reviewed migration scripts/bundles as a separate deployment step, disable demo seeding, use a less privileged database account and replace all fixture credentials. A deployment should not give every API process schema-changing privileges.
+The default suite uses xUnit/Moq, FixedClock/TicketBuilder, relational SQLite, real HTTP/JWT middleware and Vitest/RTL. SQL Server concurrency/migration tests additionally require a server with permission to create temporary databases:
 
-## Known limitations and AI use
+```powershell
+$env:SUPPORTDESK_TEST_SQL = 'Server=127.0.0.1,1433;Database=master;User Id=sa;Password=Local_Dev_Password1;TrustServerCertificate=True;Encrypt=False'
+npm test
+```
 
-Inherited max-id reference allocation can race during simultaneous creates; assignment can also compete for the last capacity slot. The ticket concurrency guard does not solve those cross-ticket races. No load/SQL execution-plan benchmark is claimed. SLA labels refresh on fetch. Issued JWTs remain valid until expiry after logout or later account deactivation; /me checks activity, other endpoints validate the token. Registration/reset, MFA, roles, refresh tokens and rate limiting remain outside the requested scope. “Agent” means a support employee; headless-browser detection cannot establish identity and was not added. The optional SLA report is not implemented.
+Those five tests skip explicitly when the variable is absent. Each creates/drops only its own GUID-named database. SQLite HTTP tests substitute reference allocation because SQLite has no sequences; production allocation and locking are exercised on SQL Server. Coverage includes competing creates/escalations, one remaining capacity slot, legacy-reference migration, failed-history rollback, uncertain commits, SLA boundaries, filter requests, JWT rejection and UI/session response races.
 
-Codex assisted implementation, tests, debugging and documentation. A real request regression was written before its fix. Search-only debounce was retained; per-filter dependency wiring was rejected. Review consolidated SLA query logic, replaced an entity response with a DTO, corrected history-table naming and added stale-write tests. An AI-generated health extension call initially failed compilation and was corrected. Builds, relational/API tests, browser runs and visual inspection checked generated work. The candidate must understand the changes and record their own honest time breakdown before submission.
+Repeat live API checks with `pwsh -File scripts/verify-live.ps1`. The optional `node scripts/browser-live.mjs` requires Playwright/Chromium and Vite running. The latest live run passed 40 API checks and 8 browser checks. Reports go into ignored `artifacts/`; scripts create development tickets and affect workloads. Selected screenshots: [sign-in](assets/screenshots/sign-in.png), [detail/history](assets/screenshots/ticket-details.png), [mobile](assets/screenshots/ticket-details-mobile.png).
+
+Docker checks cover fresh migration/seed, retained-data upgrades, source-edit restore caching, runtime size versus SDK, `whoami=app`, absence of SDK/secret files, Vite proxy and an isolated unreachable-database health check. The measured API image is 454,879,688 bytes (455 MB) versus the measured 1.304 GB SDK image; `/app` is 82 MB. Healthy DB returns 200; the isolated failure probe returned 503 in 5.35 seconds. These are measured development results, not a load benchmark.
+
+## Limits and submission
+
+Serializable workload reads trade throughput for correctness on this small desk; no 10-million-ticket benchmark is claimed. Manual assignment remains an override. SLA labels refresh on fetch. Issued JWTs remain valid until expiry after logout or later deactivation; `/me` checks activity. Refresh tokens, MFA, registration, rate limiting, roles, bot detection and deployment infrastructure are outside the brief. Passwords are hashed, not reversibly encrypted; JWT claims contain no credentials.
+
+In production, use reviewed migration scripts/bundles as a controlled deployment step, disable demo seeding, use a less privileged runtime database account and replace fixtures. Submission includes the fork link, development credentials and actual time spent per task. The review PR is optional; the brief requires the fork.
+
+Codex assisted code, tests, debugging and documentation. Standard Identity hashing was retained after verification; per-filter effect wiring was rejected. Review changed duplicated SLA logic, entity responses and table naming. An AI-generated health extension call initially failed compilation and was corrected. Concurrency and stale-response regressions failed before their fixes. Builds, real database/API tests and browser inspection checked generated work; not every earlier change followed TDD.

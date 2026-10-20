@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 param(
     [string]$BaseUrl = 'http://127.0.0.1:5080',
-    [string]$OutputPath = 'docs/evidence/live-api.json'
+    [string]$OutputPath = 'artifacts/api-results.json'
 )
 $ErrorActionPreference = 'Stop'
 $checks = [System.Collections.Generic.List[object]]::new()
@@ -86,5 +86,7 @@ Check 'immutable history has before and after priority and deadline' ($history.C
 Check 'escalation deadline recomputed from escalation time' ([math]::Abs(([datetime]$history[0].toDueAtUtc - [datetime]$history[0].escalatedAtUtc).TotalHours - 4) -lt 0.000001)
 Check 'unknown history returns 404' ((Call GET '/api/tickets/999999/escalations' $null $headers).Status -eq 404)
 $report = [ordered]@{observedAt=[datetime]::UtcNow.ToString('o');backend='Live API with SQL Server';baseUrl=$BaseUrl;checks=$checks;note='Only fixture data; credentials and JWTs excluded. Creates two verification tickets.'}
+$reportDirectory = Split-Path -Parent $OutputPath
+if ($reportDirectory) { New-Item -ItemType Directory -Path $reportDirectory -Force | Out-Null }
 $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $OutputPath -Encoding utf8
 Write-Output "PASS: $($checks.Count) live checks. Report: $OutputPath"

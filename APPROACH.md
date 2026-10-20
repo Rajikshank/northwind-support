@@ -13,12 +13,14 @@ The assessment calls for extending a working application, so I kept its layers, 
 
 ## Verification and trade-offs
 
-Tests include request regressions, triage choices and boundaries, real relational queries, actual HTTP/JWT middleware, reassignment/history snapshots, atomic failure rollback and stale updates. Live SQL Server/browser checks supplement SQLite; they do not replace SQL Server migration and precision checks. Results and reproduction commands live in one [evidence file](docs/EVIDENCE.md).
+Tests include request regressions, triage choices and boundaries, real relational queries, actual HTTP/JWT middleware, reassignment/history snapshots, atomic failure rollback and stale updates. Live SQL Server/browser checks supplement SQLite; they do not replace SQL Server migration and precision checks. Results, reproduction commands and the authentication diagram are in the README. Generated reports stay in ignored artifacts; only three selected screenshots are retained.
 
-The inherited ticket-reference allocator and last-slot assignment race remain documented limitations rather than an untested concurrency framework. Production would need database-backed allocation, stronger capacity coordination, controlled migrations and a fuller session lifecycle. No claim of production completeness or a guaranteed assessment score is made.
+The reference and last-slot races were reproduced against SQL Server before fixing them. A sequence handles allocation; a short serializable transaction covers workload reads and writes. Only confirmed deadlocks before commit retry, with tracked state cleared before rerunning the decision. A lost-commit-acknowledgement test proves a successful write is not blindly replayed. This intentionally replaces blanket provider retries; see [EF transaction/retry guidance](https://learn.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency).
+
+That choice favours correctness over high throughput for this small desk. Manual assignment remains the supplied override; production still needs controlled migrations and a fuller session lifecycle. No production completeness or selection outcome is promised.
 
 ## AI and time disclosure
 
 Codex assisted code, tests, debugging, Docker operation and documentation. The request-regression-first workflow worked. Review changed duplicated SLA logic and an entity-shaped response, and found a singular/plural schema mismatch. A generated health-call compilation error was caught by the build; a broad browser fixture pattern was narrowed after it intercepted source modules. Final evidence uses the actual API instead of retained mock screenshots.
 
-Implementation and verification spanned 19–20 October 2026. These assisted sessions do not establish the candidate's independent hours. Before submission, add an honest per-task breakdown including research, review and study; do not substitute the employer's estimates. No email submission is sent automatically. Current work remains local pending candidate approval.
+Implementation and verification spanned 19–20 October 2026. The submission email records actual time per task, including research, implementation, review and study. Session dates are not a measure of independent hours, and the brief's effort estimates are not claimed as time spent.

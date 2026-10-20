@@ -1,9 +1,11 @@
 // Real-browser verification against the running SQL Server-backed API via Vite's proxy.
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
+import { dirname } from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 const base = process.env.WEB_URL ?? 'http://127.0.0.1:5173';
-const output = process.env.EVIDENCE_DIR ?? 'docs/evidence';
+const output = process.env.SCREENSHOT_DIR ?? 'assets/screenshots';
+const reportPath = process.env.REPORT_PATH ?? 'artifacts/browser-results.json';
 await mkdir(output, {recursive:true});
 const browser = await chromium.launch({headless:true});
 const page = await browser.newPage({viewport:{width:1440,height:1000}});
@@ -14,7 +16,7 @@ const apiResponse = (path, method='GET') => page.waitForResponse(response =>
 try {
   await page.goto(`${base}/tickets`);
   await page.getByLabel('Email',{exact:true}).waitFor();
-  await page.screenshot({path:`${output}/live-login.png`,fullPage:true});
+  await page.screenshot({path:`${output}/sign-in.png`,fullPage:true});
   await page.getByLabel('Email',{exact:true}).fill('alex.turner@northwind-support.example');
   await page.getByLabel('Password',{exact:true}).fill('LocalDemo-Only!2026');
   const login = apiResponse('/api/auth/login','POST');
@@ -24,10 +26,9 @@ try {
   const status = page.waitForResponse(response => new URL(response.url()).searchParams.get('status')==='InProgress');
   await page.getByLabel('Status',{exact:true}).selectOption('InProgress');
   assert.equal((await status).status(),200);
-  await page.screenshot({path:`${output}/live-filter.png`,fullPage:true});
   await page.getByRole('link',{name:'New ticket',exact:true}).click();
-  await page.getByLabel('Title',{exact:true}).fill('Browser SQL verification');
-  await page.getByLabel('Description',{exact:true}).fill('Live SQL Server browser workflow fixture.');
+  await page.getByLabel('Title',{exact:true}).fill('Payment not reflected on invoice');
+  await page.getByLabel('Description',{exact:true}).fill('The customer paid yesterday, but the invoice still shows overdue.');
   await page.getByLabel('Customer',{exact:true}).selectOption('2');
   await page.getByLabel('Category',{exact:true}).selectOption('2');
   await page.getByLabel('Requested priority',{exact:true}).selectOption('Medium');
@@ -39,9 +40,8 @@ try {
   assert.equal(created.priority,'Medium');
   assert(created.triage?.assignmentReason);
   await page.getByRole('button',{name:`Open ${created.reference}`,exact:true}).waitFor();
-  await page.screenshot({path:`${output}/live-triage.png`,fullPage:true});
   await page.getByRole('button',{name:`Open ${created.reference}`,exact:true}).click();
-  await page.getByLabel('Reason',{exact:true}).fill('Escalating the live browser verification fixture');
+  await page.getByLabel('Reason',{exact:true}).fill("The outstanding balance is blocking the customer's renewal.");
   const escalation = apiResponse(`/api/tickets/${created.id}/escalate`,'POST');
   await page.getByRole('button',{name:'Escalate ticket',exact:true}).click();
   const escalatedResponse = await escalation;
@@ -50,14 +50,15 @@ try {
   assert.equal(escalated.ticket.priority,'High');
   assert.match(escalated.escalation.escalatedBy,/^agent:\d+$/);
   await page.getByText('Medium to High',{exact:true}).waitFor();
-  await page.screenshot({path:`${output}/live-escalation.png`,fullPage:true});
+  await page.screenshot({path:`${output}/ticket-details.png`,fullPage:true});
   await page.setViewportSize({width:390,height:844});
-  await page.screenshot({path:`${output}/live-mobile.png`,fullPage:true});
+  await page.screenshot({path:`${output}/ticket-details-mobile.png`,fullPage:true});
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.getByRole('button',{name:'Sign out',exact:true}).click();
   await page.getByLabel('Password',{exact:true}).waitFor();
   assert.deepEqual(errors,[]);
-  const result={observedAt:new Date().toISOString(),result:'PASS',backend:'Live API / SQL Server through Vite proxy',checks:['unauthenticated redirect','seeded login','status-only HTTP request','create triage','escalation and refreshed history','mobile overflow','logout','no page errors'],ticketReference:created.reference,screenshots:5};
-  await writeFile(`${output}/live-browser.json`,JSON.stringify(result,null,2)+'\n');
+  const result={observedAt:new Date().toISOString(),result:'PASS',backend:'Live API / SQL Server through Vite proxy',checks:['unauthenticated redirect','seeded login','status-only HTTP request','create triage','escalation and refreshed history','mobile overflow','logout','no page errors'],ticketReference:created.reference,screenshots:3};
+  await mkdir(dirname(reportPath), { recursive: true });
+  await writeFile(reportPath,JSON.stringify(result,null,2)+'\n');
   console.log(JSON.stringify(result,null,2));
 } finally { await browser.close(); }
