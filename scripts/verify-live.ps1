@@ -1,5 +1,6 @@
+#Requires -Version 7.0
 param(
-    [string]$BaseUrl = 'http://localhost:5080',
+    [string]$BaseUrl = 'http://127.0.0.1:5080',
     [string]$OutputPath = 'docs/evidence/live-api.json'
 )
 $ErrorActionPreference = 'Stop'

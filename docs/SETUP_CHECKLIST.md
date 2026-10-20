@@ -1,6 +1,6 @@
 # Setup before implementation
 
-Initial prerequisite snapshot, 19 October 2026. Implementation update: .NET 10.0.402 was subsequently located under Program Files and used successfully; Docker engine became reachable after user setup, but image extraction filled C:. Docker execution is now deferred by request. Tests/builds run; see EVIDENCE.md for current results. The table below preserves the initial setup findings and must not be mistaken for final verification status.
+Initial prerequisite snapshot, 19 October 2026. Implementation update: .NET 10.0.402 was subsequently located under Program Files and used successfully; Docker engine became reachable after user setup, but image extraction filled C:. Docker verification subsequently resumed: final image, SQL Server migrations/seed, live API/browser checks and caching passed. See EVIDENCE.md for current results. The table below preserves the initial setup findings and must not be mistaken for final verification status.
 
 ## Current machine
 
@@ -16,7 +16,7 @@ Initial prerequisite snapshot, 19 October 2026. Implementation update: .NET 10.0
 | GitHub CLI | Not on PATH | Optional only; browser GitHub fork creation plus git is sufficient. |
 | App dependencies | node_modules absent; package-lock.json present | Run npm ci once runtime setup is ready. |
 
-Docker registry location: `%LOCALAPPDATA%\Programs\DockerDesktop`. The client currently reports no reachable Docker engine pipe. Docker installation alone does not prove containers can run.
+Docker registry location: `%LOCALAPPDATA%\Programs\DockerDesktop`. The initial client had no reachable engine pipe. The recovered engine subsequently ran both containers successfully; the table above remains an initial snapshot.
 
 ## Install or activate
 

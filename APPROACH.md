@@ -1,6 +1,6 @@
 # Approach and review notes
 
-The existing app was the starting point. I kept its layers and UI conventions, worked in the candidate fork, and committed the defect and filtering separately. The scope is the four assessment tasks plus previous-successful-login tracking. Docker execution was later deferred when disk space ran out; that is a verification gap, not a passing result.
+The existing app was the starting point. I kept its layers and UI conventions, worked in the candidate fork, and committed the defect and filtering separately. The scope is the four assessment tasks plus previous-successful-login tracking. Docker verification resumed after storage and engine recovery. The final image runs against SQL Server; the remaining gap is a blocked database-outage retest.
 
 ## Task 1: prove the bug before changing it
 
@@ -8,7 +8,7 @@ The first useful test went through the real query serializer to fetch. Selecting
 
 I separated search input from the committed query. Only search waits 300 ms; changing a dropdown, sorting or paging requests immediately. Search resets the page only when it commits, preventing an accidental early request from page 3. Cancellation plus a state-publication guard prevents an older response replacing a newer query. Tests cover each filter, including the later SLA filter, query serialization, reset and out-of-order responses.
 
-Backend filtering stays in IQueryable before count and pagination. A relational test originally requested High and received Critical, then passed after the query fix. Exact priorities are equality, not a threshold. Search is OR within the three text fields and AND with other filters. SQLite confirms relational execution and count behaviour; it does not establish SQL Server collation or query-plan performance. Those checks remain pending.
+Backend filtering stays in IQueryable before count and pagination. A relational test originally requested High and received Critical, then passed after the query fix. Exact priorities are equality, not a threshold. Search is OR within the three text fields and AND with other filters. SQLite confirms relational execution and count behaviour. Live SQL Server API checks also passed exact and combined filters, customer search and paging/counts under SQL_Latin1_General_CP1_CI_AS. No execution-plan performance benchmark is claimed.
 
 ## Task 2: share decisions, preserve history
 
@@ -36,7 +36,7 @@ AI/headless detection would not authenticate the account owner. A cooperative ha
 
 The Dockerfile copies project metadata before source, restores the application graph once, and publishes into a non-root ASP.NET runtime image. The SDK, source, web app, .env and Development settings do not belong in the runtime image. I retained globalization support and ordinary runtime tooling instead of pursuing trimming/AOT that could break EF and validation reflection. Runtime environment variables supply connectivity/JWT and allow SLA overrides. Compose waits for database health. /health is anonymously accessible and uses the framework health-check pipeline.
 
-The local engine became available, but image extraction exhausted C: and failed. The user asked to leave further Docker work for later. No runtime size, cached-layer result, non-root execution result or clean-volume result is fabricated. The generated SQL Server migration script is saved, but has not been applied to a live SQL Server here. Production migration scripts/bundles should be reviewed and run as a separate deployment step, with demo seeding disabled.
+Initial Docker extraction exhausted C: and left a corrupt SQL image cache. After storage/engine recovery, the distinct official SQL Server CU27 image worked. A new verification volume received all three migrations and the demo seed; restarting preserved data. The final API image is 455 MB, runs as app, contains no SDK or Development settings, and reuses restore layers. Container builds exclude EF design-time dependencies. Cleanup removed 1.54 GB of unused cache without deleting the database volume. A measured 120-second outage response led to a five-second framework health-check timeout; automatic approval review blocked the final shutdown/recovery retest, so that timing is not claimed as verified. Production migration scripts/bundles should be reviewed and run as a separate deployment step, with demo seeding disabled.
 
 ## Assessment edge cases I checked
 
@@ -59,4 +59,4 @@ Observed implementation-session anchors (19 October, Asia/Colombo): baseline tes
 
 Codex was used for code, tests, debugging, documentation and browser checks. The request-regression-first workflow worked well. The search-only debounce approach was accepted; a manually enumerated effect-dependency workaround was rejected. Review consolidated duplicated SQL SLA logic and introduced a history DTO. A generated health call used the wrong extension class; the compiler caught it and it was corrected before final checks. A broad browser fixture route initially intercepted source-module URLs; narrowing it to the application's API prefix fixed the test harness. Verification includes real HTTP/JWT integration tests, relational SQL tests, builds, lint/types/format, audits and visual inspection of fixture-backed screenshots. The candidate still needs to understand and explain the changes.
 
-Before submission, resolve the Docker/SQL Server verification gap and reconcile actual per-task time. No email has been sent and no employer-facing PR has been opened.
+Before submission, reconcile actual per-task time and review the recorded outage-test limitation. No email has been sent and no employer-facing PR has been opened.

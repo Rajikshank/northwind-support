@@ -9,8 +9,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
-    <!-- Required for the EF Core CLI to use this project as its startup project. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+    <!-- EF CLI tooling is needed locally, not for a container restore/publish. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Condition="'$(ContainerBuild)' != 'true'">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

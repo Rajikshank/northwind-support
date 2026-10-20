@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-10-20",
+  "project": "northwind-verification",
+  "apiImageBytes": 454857234,
+  "sdkComparisonBytes": 1303849917,
+  "runtimeAppDirectory": "82M",
+  "runtimeUser": "app",
+  "sdkPresent": false,
+  "developmentSettingsPresent": false,
+  "envFilePresent": false,
+  "sqlImage": "mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04",
+  "freshVolumeMigrations": 3,
+  "initialSeedTickets": 40,
+  "restoreCache": "PASS",
+  "liveApiChecks": 40,
+  "liveBrowserChecks": 8,
+  "unusedBuildCacheReclaimed": "1.538 GB",
+  "remainingImages": 2,
+  "databaseVolumesPreserved": true,
+  "outageRetest": "BLOCKED by automatic approval review; five-second timeout not live-outage verified"
+}

@@ -1,6 +1,6 @@
 # Verification evidence
 
-Observed on 19 October 2026. The test names below link to runnable checks rather than screenshots of a green terminal. SQL Server and Docker runtime checks are explicitly pending.
+Updated 20 October 2026. The test names below link to runnable checks. Live API/browser reports now use the final Docker API and SQL Server; fixture screenshots remain labelled separately.
 
 ## Final available checks
 
@@ -13,11 +13,11 @@ Observed on 19 October 2026. The test names below link to runnable checks rather
 | `npm run format:check` | PASS: no formatting changes required |
 | `npm audit` | Zero known vulnerabilities from configured registry |
 | `dotnet list package --vulnerable --include-transitive` | No vulnerable packages reported in all six projects |
-| EF idempotent SQL Server migration script | Generated successfully: [migrations.sql](evidence/migrations.sql); not applied to SQL Server |
+| EF idempotent SQL Server migration script | Generated successfully: [migrations.sql](evidence/migrations.sql); all three migrations applied by application startup on a fresh SQL Server volume |
 | Chromium browser fixture smoke | PASS: login redirect/login, filter request, escalation/history refresh, triage feedback, 390px overflow assertion, no page errors |
 | Visual inspection | Login, escalation form/detail and mobile layout inspected; mobile account header wrapping corrected and recaptured |
-| Docker build/start/image size/cache/user | UNVERIFIED: disk filled during extraction; further Docker work deferred by user |
-| SQL Server clean migration/seed/query plan/collation | PENDING: requires available container storage |
+| Docker build/start/image size/cache/user | PASS: 454,857,234 bytes; app user; no SDK/Development settings; restore CACHED. [Runtime record](evidence/docker-runtime.json) |
+| SQL Server clean migration/seed/collation | PASS: 40 seeded tickets; three migrations; SQL_Latin1_General_CP1_CI_AS. Live filtering/count checks passed; execution-plan benchmarking not performed |
 
 ## Red-before / green-after evidence
 
@@ -42,7 +42,7 @@ Observed on 19 October 2026. The test names below link to runnable checks rather
 | AU-9–13: session/client/routes | `session.test.tsx`: anonymous redirect, central header and 401 reset, safe same-origin return path; browser checks login and signed-in shell |
 | Additional previous-login requirement | `AuthenticationTests.LoginChangesTimestampOnlyOnSuccessAndReturnsPreviousLogin`: first/next success, previous timestamp, rejected login unchanged |
 | Migrations and boundaries | Existing `PersistenceModelTests` and `LayerDependencyTests` pass; SQL Server script generated |
-| DK-1–8 | Dockerfile/ignore/Compose/health implemented and source-reviewed. Anonymous health passes in HTTP integration host. Actual container acceptance checks pending. |
+| DK-1–8 | Dockerfile/ignore/Compose verified with actual build, fresh-volume startup, cached rebuild, runtime file/user inspection and anonymous health 200. Outage retest after timeout correction blocked by execution policy. |
 
 SQLite tests use a relational database, not EF InMemory. HTTP integration uses the actual application composition root, controllers, validation, error middleware and JWT middleware, replacing only the database provider with SQLite. It is not proof of SQL Server-specific behaviour. Concurrent capacity selection/reference allocation and concurrent timestamp stress are not verified and are not claimed as load-safe.
 
@@ -73,4 +73,15 @@ After freeing storage: build/start with a disposable empty SQL volume; apply mig
 
 Later on 19 October, C: had about 8.5 GB free. Docker Desktop still failed to start: its backend reported that the temporary `Docker/run/dockerInference` socket could not be removed/accessed. A normal startup retry and termination of only the docker-desktop WSL distribution did not restore the engine. Automated removal of the zero-byte runtime socket was blocked by tool policy, so the user was given the precise manual cleanup step. No images, volumes or database files were deleted.
 
-`scripts/verify-live.ps1` now provides repeatable live SQL-backed API checks and a credential-free JSON report. `scripts/browser-live.mjs` provides a real browser/API workflow through the Vite proxy. Both are prepared for the next run; they have not passed against a running backend yet. The PowerShell script parses successfully. No previous deferred check is marked complete by these preparations.
+`scripts/verify-live.ps1` now provides repeatable live SQL-backed API checks and a credential-free JSON report. `scripts/browser-live.mjs` provides a real browser/API workflow through the Vite proxy. They were initially prepared without a running backend; both subsequently passed against SQL Server, as recorded below.
+
+## Live SQL Server and container run — 20 October
+
+- [Live API report](evidence/live-api.json): 40 passing checks using the actual JWT middleware, controllers and SQL Server. Includes generic failed login, inactive login, protected endpoints, previous login, exact/combined/search filters, count/paging, triage, escalation guards and authenticated history actor.
+- [Live browser report](evidence/live-browser.json): 8 passing checks through Vite's API proxy, with no HTTP mocks. Covers login redirect, status request, create/triage, escalation/history refresh, 390px overflow, logout and page errors. Scripts create development test tickets.
+- Live screenshots: [login](evidence/live-login.png), [filter](evidence/live-filter.png), [triage](evidence/live-triage.png), [escalation](evidence/live-escalation.png), [mobile](evidence/live-mobile.png). Desktop/mobile escalation screenshots were visually inspected.
+- SQL Server reported migrations `20260926183612_InitialCreate`, `20261019132018_TicketEscalationAndSla`, `20261019132532_AgentCredentials`. A restart retained data and did not duplicate seed records.
+- A source-only cache experiment reused restore and reran publish; a subsequent final-image rebuild reported restore and publish CACHED. Unused build cache was then pruned; future cold builds need to download SDK layers again.
+- The first SQL image had a corrupt archive after disk exhaustion. The tested CU27 image starts successfully. This is environment recovery evidence, not an application test failure.
+- A database-down health probe returned 503 after 119.88 seconds because connection retries were slow. Registration now bounds the check to five seconds. Automated tests and normal live health passed, but automatic approval review rejected the final temporary SQL shutdown with “blocked by policy”; outage timing and recovery after this change remain unverified.
+- Rechecked after the timeout change: backend 49 + architecture 4 tests, frontend 27 tests, production build, lint and typecheck passed. Format verification identified mixed line endings in Program.cs; normalized to LF and reran the check.

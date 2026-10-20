@@ -1,0 +1,17 @@
+{
+  "observedAt": "2026-10-20T00:46:31.227Z",
+  "result": "PASS",
+  "backend": "Live API / SQL Server through Vite proxy",
+  "checks": [
+    "unauthenticated redirect",
+    "seeded login",
+    "status-only HTTP request",
+    "create triage",
+    "escalation and refreshed history",
+    "mobile overflow",
+    "logout",
+    "no page errors"
+  ],
+  "ticketReference": "TCK-1004",
+  "screenshots": 5
+}
