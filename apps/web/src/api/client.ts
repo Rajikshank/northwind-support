@@ -41,6 +41,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
 
+  // An old request cannot publish data or sign out a newer session.
   if (path !== '/auth/login' && session !== getSession()) {
     throw new ApiError(401, 'Session changed. Sign in again.');
   }
