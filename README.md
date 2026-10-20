@@ -42,22 +42,7 @@ SLA status is derived with an injectable clock. Deadline/risk-boundary timestamp
 
 **Task 3.** One Agent is one account, so credential fields belong on Agent. Identity PasswordHasher supplies salted hashes. Unknown/wrong/inactive credentials have the same 401 response. JWTs last 30 minutes, with signature, algorithm, issuer, audience and expiry validation plus 15 seconds of clock skew. The signing key comes from runtime configuration. Central fallback authorization protects all endpoints; login/health are explicit exceptions and Swagger is open in Development. Escalation actors come from token subjects, never request bodies.
 
-```mermaid
-sequenceDiagram
-    participant B as Browser
-    participant A as API
-    participant D as Database
-    B->>A: Email and password
-    A->>D: Load agent and saved password hash
-    D-->>A: Account
-    A->>A: Verify password and active status
-    A->>D: Update successful-login timestamp
-    A-->>B: JWT, expiry and previous successful login
-    B->>A: API request with bearer JWT
-    A->>A: Validate token and central authorization
-    A-->>B: Result, or 401
-    Note over B: On 401 clear session and show login
-```
+![Agent sign-in and API authorization](assets/diagrams/sign-in-flow.svg)
 
 The client keeps the token in memory: refreshing requires sign-in, and persistent token storage is avoided. This does not eliminate XSS. Protected routes preserve safe internal destinations; logout/401 clears the session. Old requests cannot overwrite a newer session. Failed logins leave the saved login timestamp unchanged; successful logins use a bounded compare-and-swap. A frontend route guard improves navigation; API authorization enforces access.
 

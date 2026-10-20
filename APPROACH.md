@@ -13,7 +13,7 @@ The assessment calls for extending a working application, so I kept its layers, 
 
 ## Verification and trade-offs
 
-Tests include request regressions, triage choices and boundaries, real relational queries, actual HTTP/JWT middleware, reassignment/history snapshots, atomic failure rollback and stale updates. Live SQL Server/browser checks supplement SQLite; they do not replace SQL Server migration and precision checks. Results, reproduction commands and the authentication diagram are in the README. Generated reports stay in ignored artifacts; only three selected screenshots are retained.
+Tests include request regressions, triage choices and boundaries, real relational queries, actual HTTP/JWT middleware, reassignment/history snapshots, atomic failure rollback and stale updates. Live SQL Server/browser checks supplement SQLite; they do not replace SQL Server migration and precision checks. Results, reproduction commands and the authentication diagram are in the README. The [triage diagram](assets/diagrams/triage-flow.svg) follows creation and escalation through the shared policies and transaction. Generated reports stay in ignored artifacts; only three selected screenshots are retained.
 
 The reference and last-slot races were reproduced against SQL Server before fixing them. A sequence handles allocation; a short serializable transaction covers workload reads and writes. Only confirmed deadlocks before commit retry, with tracked state cleared before rerunning the decision. A lost-commit-acknowledgement test proves a successful write is not blindly replayed. This intentionally replaces blanket provider retries; see [EF transaction/retry guidance](https://learn.microsoft.com/en-us/ef/core/miscellaneous/connection-resiliency).
 
