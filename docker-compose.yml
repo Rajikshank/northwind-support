@@ -1,15 +1,38 @@
 # SQL Server for local development only. The password below is a throwaway local
 # placeholder - never commit a real credential.
 services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "127.0.0.1:5080:8080"
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
+      ConnectionStrings__Default: "Server=sqlserver,1433;Database=SupportDesk;User Id=sa;Password=${MSSQL_SA_PASSWORD:-Local_Dev_Password1};TrustServerCertificate=True;Encrypt=False"
+      Jwt__SigningKey: "${Jwt__SigningKey:?Set Jwt__SigningKey in .env (see .env.example)}"
+      Jwt__Issuer: "${Jwt__Issuer:-northwind-support}"
+      Jwt__Audience: "${Jwt__Audience:-northwind-support-web}"
+      Jwt__LifetimeMinutes: "${Jwt__LifetimeMinutes:-30}"
+      Sla__BaseWindowHours__Critical: "${Sla__BaseWindowHours__Critical:-4}"
+      Sla__BaseWindowHours__High: "${Sla__BaseWindowHours__High:-8}"
+      Sla__BaseWindowHours__Medium: "${Sla__BaseWindowHours__Medium:-24}"
+      Sla__BaseWindowHours__Low: "${Sla__BaseWindowHours__Low:-72}"
+      Sla__PremiumCustomerMultiplier: "${Sla__PremiumCustomerMultiplier:-0.5}"
+      Sla__MinimumWindowHours: "${Sla__MinimumWindowHours:-1}"
+      Sla__AtRiskThresholdPercent: "${Sla__AtRiskThresholdPercent:-25}"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: supportdesk-sql
+    image: mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-Local_Dev_Password1}"
       MSSQL_PID: Developer
     ports:
-      - "1433:1433"
+      - "127.0.0.1:1433:1433"
     volumes:
       - supportdesk-sql:/var/opt/mssql
     healthcheck:

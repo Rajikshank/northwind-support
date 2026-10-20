@@ -23,6 +23,9 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 
         builder.HasKey(t => t.Id);
 
+        // Managed by the context so SQL Server and relational tests use the same guard.
+        builder.Property<Guid>("Version").IsConcurrencyToken();
+
         builder.Property(t => t.Reference).HasMaxLength(20).IsRequired();
 
         builder.Property(t => t.Title).HasMaxLength(200).IsRequired();
@@ -33,13 +36,13 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 
         builder.Property(t => t.Status).HasConversion<int>();
 
-        builder.Property(t => t.CreatedAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(t => t.CreatedAtUtc).HasColumnType("datetime2(7)");
 
-        builder.Property(t => t.UpdatedAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(t => t.UpdatedAtUtc).HasColumnType("datetime2(7)");
 
-        builder.Property(t => t.DueAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(t => t.DueAtUtc).HasColumnType("datetime2(7)");
 
-        builder.Property(t => t.ResolvedAtUtc).HasColumnType("datetime2(3)");
+        builder.Property(t => t.ResolvedAtUtc).HasColumnType("datetime2(7)");
 
         // A ticket is never silently detached from the rows that give it meaning.
         builder.HasOne<Customer>()
@@ -57,6 +60,7 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .HasForeignKey(t => t.AssignedAgentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Property(t => t.SlaAtRiskAtUtc).HasColumnType("datetime2(7)");
         builder.Ignore(t => t.IsOpen);
 
         builder.HasIndex(t => t.Reference).IsUnique().HasDatabaseName("UQ_Tickets_Reference");

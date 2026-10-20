@@ -16,18 +16,12 @@ namespace SupportDesk.Infrastructure.Queries;
 /// </summary>
 public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQueries
 {
-    /// <remarks>
-    /// Sorts and pages every ticket. The filter values bound into <paramref name="query"/>
-    /// (search, status, priority, category, customer, agent, unassigned-only) are not applied
-    /// yet: server-side filtering is still to be built.
-    /// </remarks>
     public async Task<PagedResult<TicketListItemDto>> GetPagedAsync(TicketQuery query, CancellationToken ct)
     {
-        var tickets = TicketsWithLabels();
+        var now = clock.UtcNow;
+        var tickets = ApplyFilters(TicketsWithLabels(now), query);
 
         var totalCount = await tickets.CountAsync(ct);
-
-        var now = clock.UtcNow;
 
         var items = await ApplySort(tickets, query)
             .Skip((query.Page - 1) * query.PageSize)
@@ -46,7 +40,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = SlaEvaluator.Evaluate(x.Ticket.DueAtUtc, x.Ticket.ResolvedAtUtc, now)
+                SlaStatus = x.SlaStatus
             })
             .ToListAsync(ct);
 
@@ -57,7 +51,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     {
         var now = clock.UtcNow;
 
-        return TicketsWithLabels()
+        return TicketsWithLabels(now)
             .Where(x => x.Ticket.Id == id)
             .Select(x => new TicketDetailDto
             {
@@ -75,7 +69,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = SlaEvaluator.Evaluate(x.Ticket.DueAtUtc, x.Ticket.ResolvedAtUtc, now)
+                SlaStatus = x.SlaStatus
             })
             .FirstOrDefaultAsync(ct);
     }
@@ -84,7 +78,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     {
         var now = clock.UtcNow;
 
-        return await TicketsWithLabels()
+        return await TicketsWithLabels(now)
             .Where(x => x.Ticket.CustomerId == customerId)
             .OrderByDescending(x => x.Ticket.CreatedAtUtc)
             .ThenByDescending(x => x.Ticket.Id)
@@ -102,7 +96,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = SlaEvaluator.Evaluate(x.Ticket.DueAtUtc, x.Ticket.ResolvedAtUtc, now)
+                SlaStatus = x.SlaStatus
             })
             .ToListAsync(ct);
     }
@@ -110,12 +104,41 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     /// <summary>
     /// Every ticket with the rows that label it. Filter and sort this, then project.
     /// </summary>
-    private IQueryable<TicketWithLabels> TicketsWithLabels() =>
+    private IQueryable<TicketWithLabels> TicketsWithLabels(DateTime now) =>
         from ticket in db.Set<Ticket>().AsNoTracking()
         join customer in db.Set<Customer>() on ticket.CustomerId equals customer.Id
         join category in db.Set<Category>() on ticket.CategoryId equals category.Id
         from agent in db.Set<Agent>().Where(a => a.Id == ticket.AssignedAgentId).DefaultIfEmpty()
-        select new TicketWithLabels { Ticket = ticket, Customer = customer, Category = category, Agent = agent };
+        select new TicketWithLabels
+        {
+            Ticket = ticket,
+            Customer = customer,
+            Category = category,
+            Agent = agent,
+            // This expression is composed into both WHERE and SELECT by EF, never evaluated after paging.
+            SlaStatus = ticket.DueAtUtc == null ? SlaStatus.NotApplicable
+                : ticket.ResolvedAtUtc != null ? (ticket.ResolvedAtUtc <= ticket.DueAtUtc ? SlaStatus.Met : SlaStatus.Breached)
+                : now > ticket.DueAtUtc ? SlaStatus.Breached
+                : ticket.SlaAtRiskAtUtc != null && now >= ticket.SlaAtRiskAtUtc ? SlaStatus.AtRisk : SlaStatus.WithinSla
+        };
+
+    private static IQueryable<TicketWithLabels> ApplyFilters(IQueryable<TicketWithLabels> source, TicketQuery query)
+    {
+        if (query.SlaStatus is { } sla)
+            source = source.Where(x => x.SlaStatus == sla);
+        if (query.Status is { } status) source = source.Where(x => x.Ticket.Status == status);
+        if (query.Priority is { } priority) source = source.Where(x => x.Ticket.Priority == priority);
+        if (query.CategoryId is { } category) source = source.Where(x => x.Ticket.CategoryId == category);
+        if (query.CustomerId is { } customer) source = source.Where(x => x.Ticket.CustomerId == customer);
+        if (query.AssignedAgentId is { } agent) source = source.Where(x => x.Ticket.AssignedAgentId == agent);
+        if (query.UnassignedOnly) source = source.Where(x => x.Ticket.AssignedAgentId == null);
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            source = source.Where(x => x.Ticket.Title.Contains(search) || x.Ticket.Reference.Contains(search) || x.Customer.Name.Contains(search));
+        }
+        return source;
+    }
 
     private static IQueryable<TicketWithLabels> ApplySort(IQueryable<TicketWithLabels> source, TicketQuery query)
     {
@@ -146,6 +169,8 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
 
     private sealed class TicketWithLabels
     {
+        public SlaStatus SlaStatus { get; init; }
+
         public required Ticket Ticket { get; init; }
 
         public required Customer Customer { get; init; }

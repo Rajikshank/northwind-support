@@ -7,11 +7,14 @@ export type CustomerTier = 'Standard' | 'Premium';
 
 export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
-export type TicketStatus = 'New' | 'Open' | 'InProgress' | 'Resolved' | 'Closed';
+export type TicketStatus =
+  'New' | 'Open' | 'InProgress' | 'Resolved' | 'Closed';
 
-export type SlaStatus = 'NotApplicable' | 'WithinSla' | 'AtRisk' | 'Breached' | 'Met';
+export type SlaStatus =
+  'NotApplicable' | 'WithinSla' | 'AtRisk' | 'Breached' | 'Met';
 
-export type TicketSortField = 'createdAtUtc' | 'updatedAtUtc' | 'dueAtUtc' | 'priority' | 'status';
+export type TicketSortField =
+  'createdAtUtc' | 'updatedAtUtc' | 'dueAtUtc' | 'priority' | 'status';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -65,6 +68,7 @@ export interface TicketListItem {
 }
 
 export interface TicketDetail {
+  triage?: TriageDecision;
   id: number;
   reference: string;
   title: string;
@@ -84,6 +88,7 @@ export interface TicketDetail {
 /** Everything the ticket list screen can narrow the results by. */
 export interface TicketFilters {
   search: string;
+  slaStatus?: SlaStatus;
   status?: TicketStatus;
   priority?: TicketPriority;
   categoryId?: number;
@@ -149,4 +154,25 @@ export interface ProblemDetails {
   detail?: string;
   traceId?: string;
   errors?: Record<string, string[]>;
+}
+
+export interface TriageDecision {
+  appliedPriority: TicketPriority;
+  priorityReason: string;
+  slaWindowHours: number;
+  slaReason: string;
+  assignmentReason: string;
+}
+export interface TicketEscalation {
+  id: number;
+  ticketId: number;
+  fromPriority: TicketPriority;
+  toPriority: TicketPriority;
+  fromAgentId: number | null;
+  toAgentId: number | null;
+  fromDueAtUtc: string | null;
+  toDueAtUtc: string | null;
+  reason: string;
+  escalatedBy: string;
+  escalatedAtUtc: string;
 }

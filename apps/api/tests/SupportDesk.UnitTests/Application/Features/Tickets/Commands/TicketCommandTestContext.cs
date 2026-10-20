@@ -21,6 +21,9 @@ internal sealed class TicketCommandTestContext
 {
     public TicketCommandTestContext()
     {
+        UnitOfWork.Setup(unit => unit.ExecuteTicketWriteAsync(
+                It.IsAny<Func<CancellationToken, Task<TicketDetailDto>>>(), It.IsAny<CancellationToken>()))
+            .Returns((Func<CancellationToken, Task<TicketDetailDto>> operation, CancellationToken ct) => operation(ct));
         Customers.Setup(c => c.ExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
@@ -46,9 +49,13 @@ internal sealed class TicketCommandTestContext
 
         var getTicket = new GetTicketQueryHandler(TicketQueries.Object);
 
+        var triageData = new Mock<ITriageData>();
+        triageData.Setup(x => x.CustomerAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(new Customer("Test", "test@example.com", null, CustomerTier.Standard, Clock.UtcNow));
+        triageData.Setup(x => x.CategoryAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SupportDesk.Domain.Aggregates.Categories.Category("Test", false, false));
+        triageData.Setup(x => x.CandidatesAsync(It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<AssignmentCandidate>());
         RaiseTicket = new RaiseTicketCommandHandler(
             Tickets.Object, Customers.Object, Categories.Object, UnitOfWork.Object, Clock, getTicket,
-            NullLogger<RaiseTicketCommandHandler>.Instance);
+            NullLogger<RaiseTicketCommandHandler>.Instance, new SupportDesk.Application.Features.Tickets.TriageService(triageData.Object, new SlaPolicy()));
 
         ChangeTicketStatus = new ChangeTicketStatusCommandHandler(Tickets.Object, UnitOfWork.Object, Clock, getTicket);
 

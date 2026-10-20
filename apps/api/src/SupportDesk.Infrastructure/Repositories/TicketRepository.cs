@@ -16,15 +16,12 @@ public sealed class TicketRepository(SupportDbContext db) : ITicketRepository
 
     public async Task<string> NextReferenceAsync(CancellationToken ct)
     {
-        // Single-instance application: the highest id so far is good enough. A database
-        // sequence would be the answer if more than one API instance created tickets.
-        var lastId = await db.Set<Ticket>()
-            .AsNoTracking()
-            .OrderByDescending(t => t.Id)
-            .Select(t => t.Id)
-            .FirstOrDefaultAsync(ct);
-
-        return $"TCK-{lastId + 1:D4}";
+        // SQL Server allocates each value atomically across requests and API processes.
+        // A rollback can leave a gap; references identify tickets, they are not a row count.
+        // Do not compose this query: NEXT VALUE FOR is not valid inside an EF subquery.
+        var values = await db.Database.SqlQueryRaw<long>(
+            "SELECT NEXT VALUE FOR dbo.TicketReferenceNumbers AS [Value]").ToListAsync(ct);
+        return $"TCK-{values.Single():D4}";
     }
 
     public async Task AddAsync(Ticket ticket, CancellationToken ct) =>

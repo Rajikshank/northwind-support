@@ -10,6 +10,17 @@ namespace SupportDesk.ArchitectureTests;
 public class PersistenceModelTests
 {
     [Fact]
+    public void EscalationHistoryUsesTheRequiredTableName()
+    {
+        var options = new DbContextOptionsBuilder<SupportDbContext>()
+            .UseSqlServer("Server=unused;Database=unused").Options;
+        using var db = new SupportDbContext(options);
+        var entity = db.Model.FindEntityType(typeof(SupportDesk.Domain.Aggregates.Tickets.TicketEscalation));
+
+        Assert.Equal("TicketEscalations", entity!.GetTableName());
+    }
+
+    [Fact]
     public void TheModel_MatchesTheLatestMigration()
     {
         // The connection string is never opened: comparing the model needs no database.

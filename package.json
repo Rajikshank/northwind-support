@@ -1,7 +1,7 @@
 {
   "name": "northwind-support-desk",
   "private": true,
-  "description": "Support ticket management system — .NET API and React web client in one repository",
+  "description": "Support ticket management system \u2014 .NET API and React web client in one repository",
   "workspaces": [
     "apps/web"
   ],
@@ -21,6 +21,6 @@
     "db:migrate": "dotnet tool restore && dotnet ef database update --project apps/api/src/SupportDesk.Infrastructure --startup-project apps/api/src/SupportDesk.Presentation"
   },
   "engines": {
-    "node": ">=20"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   }
 }

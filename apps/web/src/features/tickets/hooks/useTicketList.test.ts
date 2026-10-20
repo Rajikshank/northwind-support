@@ -46,6 +46,7 @@ describe('useTicketList', () => {
     expect(getTickets).toHaveBeenCalledTimes(2);
     expect(getTickets).toHaveBeenLastCalledWith(
       expect.objectContaining({ search: 'invoice', page: 1 }),
+      expect.any(AbortSignal),
     );
 
     expect(result.current.isLoading).toBe(false);

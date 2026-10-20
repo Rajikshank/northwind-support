@@ -17,7 +17,7 @@ namespace SupportDesk.Infrastructure.Data;
 /// Every aggregate is built through its own behaviour. The two historical values no behaviour
 /// produces - a ticket's last update and its due date - are set through EF Core directly.
 /// </remarks>
-public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<SupportDbSeeder> logger)
+public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<SupportDbSeeder> logger, SlaPolicy sla)
 {
     /// <summary>Seeds the database, unless it already has tickets in it.</summary>
     public async Task SeedAsync(CancellationToken ct = default)
@@ -25,6 +25,8 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
         if (await db.Set<Ticket>().AnyAsync(ct))
         {
             logger.LogInformation("Seed data already present; skipping.");
+            await SeedCredentialsAsync(ct);
+            await BackfillSlaAsync(ct);
             return;
         }
 
@@ -45,9 +47,32 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
         SeedTickets(now, customers, categories, agents);
         await db.SaveChangesAsync(ct);
 
+        await SeedCredentialsAsync(ct);
+        await BackfillSlaAsync(ct);
         logger.LogInformation(
             "Seeded {Categories} categories, {Customers} customers, {Agents} agents and {Tickets} tickets.",
             categories.Count, customers.Count, agents.Count, await db.Set<Ticket>().CountAsync(ct));
+    }
+
+    private async Task SeedCredentialsAsync(CancellationToken ct)
+    {
+        // Local demo fixture only. Never reset an existing hash on startup.
+        var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<Agent>();
+        foreach (var agent in await db.Set<Agent>().Where(a => a.PasswordHash == null).ToListAsync(ct))
+            agent.SetPasswordHash(hasher.HashPassword(agent, "LocalDemo-Only!2026"));
+        await db.SaveChangesAsync(ct);
+    }
+
+    private async Task BackfillSlaAsync(CancellationToken ct)
+    {
+        var tickets = await db.Set<Ticket>().Where(t => t.DueAtUtc != null && t.SlaAtRiskAtUtc == null).ToListAsync(ct);
+        var tiers = await db.Set<Customer>().ToDictionaryAsync(c => c.Id, c => c.Tier, ct);
+        foreach (var ticket in tickets)
+        {
+            var hours = sla.WindowHours(ticket.Priority, tiers[ticket.CustomerId]);
+            db.Entry(ticket).Property(t => t.SlaAtRiskAtUtc).CurrentValue = ticket.DueAtUtc!.Value.AddHours(-hours * sla.AtRiskThresholdPercent / 100);
+        }
+        await db.SaveChangesAsync(ct);
     }
 
     private static List<Category> SeedCategories() =>

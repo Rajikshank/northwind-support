@@ -1,6 +1,9 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using SupportDesk.Application.Abstractions;
 using SupportDesk.Application.Contracts.Common;
 using SupportDesk.Application.Contracts.Tickets;
+using SupportDesk.Application.Features.Tickets;
 using SupportDesk.Application.Features.Tickets.Commands.AssignTicket;
 using SupportDesk.Application.Features.Tickets.Commands.ChangeTicketStatus;
 using SupportDesk.Application.Features.Tickets.Commands.RaiseTicket;
@@ -56,4 +59,28 @@ public sealed class TicketsController : ControllerBase
         [FromServices] AssignTicketCommandHandler handler,
         CancellationToken ct) =>
         handler.HandleAsync(id, request, ct);
+
+    /// <summary>Escalates a ticket and records the authenticated caller.</summary>
+    [HttpPost("{id:int}/escalate")]
+    public Task<EscalationResult> Escalate(
+        int id,
+        EscalationBody request,
+        [FromServices] EscalateTicketHandler handler,
+        CancellationToken ct)
+    {
+        // The body cannot choose the audit actor.
+        var actor = $"agent:{User.FindFirstValue(ClaimTypes.NameIdentifier)}";
+        return handler.HandleAsync(id, new EscalateRequest(request.Reason, actor), ct);
+    }
+
+    [HttpGet("{id:int}/escalations")]
+    public async Task<IReadOnlyList<EscalationDto>> History(int id,
+        [FromServices] ITriageData data,
+        [FromServices] GetTicketQueryHandler read, CancellationToken ct)
+    {
+        await read.HandleAsync(id, ct);
+        return (await data.HistoryAsync(id, ct)).Select(EscalationDto.From).ToArray();
+    }
 }
+
+public sealed record EscalationBody(string Reason);

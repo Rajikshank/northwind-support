@@ -29,6 +29,11 @@ public sealed class Agent : AggregateRoot
 
     public string FullName { get; private set; } = string.Empty;
 
+    public string? PasswordHash { get; private set; }
+    public DateTime? LastSuccessfulLoginAtUtc { get; private set; }
+    public void SetPasswordHash(string hash) => PasswordHash = hash;
+    public void RecordLogin(DateTime now) => LastSuccessfulLoginAtUtc = now;
+
     public string Email { get; private set; } = string.Empty;
 
     /// <summary>Inactive agents keep their history but take no new work.</summary>
