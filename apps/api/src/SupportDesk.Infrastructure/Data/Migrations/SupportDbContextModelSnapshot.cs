@@ -210,6 +210,10 @@ namespace SupportDesk.Infrastructure.Data.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2(7)");
 
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AssignedAgentId")
@@ -293,7 +297,7 @@ namespace SupportDesk.Infrastructure.Data.Migrations
                     b.HasIndex("TicketId", "EscalatedAtUtc", "Id")
                         .IsDescending(false, true, true);
 
-                    b.ToTable("TicketEscalation");
+                    b.ToTable("TicketEscalations", (string)null);
                 });
 
             modelBuilder.Entity("SupportDesk.Domain.Aggregates.Agents.AgentSpecialization", b =>

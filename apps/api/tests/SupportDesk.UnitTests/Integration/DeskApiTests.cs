@@ -134,7 +134,7 @@ public class DeskApiTests
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<SupportDbContext>();
-            await db.Database.ExecuteSqlRawAsync("CREATE TRIGGER fail_history BEFORE INSERT ON TicketEscalation BEGIN SELECT RAISE(ABORT, 'injected history failure'); END;");
+            await db.Database.ExecuteSqlRawAsync("CREATE TRIGGER fail_history BEFORE INSERT ON TicketEscalations BEGIN SELECT RAISE(ABORT, 'injected history failure'); END;");
         }
         var failed = await client.PostAsJsonAsync($"/api/tickets/{original.Id}/escalate", new { reason = "Customer is impacted" });
         Assert.Equal(HttpStatusCode.InternalServerError, failed.StatusCode);

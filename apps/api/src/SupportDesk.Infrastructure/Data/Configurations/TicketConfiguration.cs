@@ -23,6 +23,9 @@ public sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 
         builder.HasKey(t => t.Id);
 
+        // Managed by the context so SQL Server and relational tests use the same guard.
+        builder.Property<Guid>("Version").IsConcurrencyToken();
+
         builder.Property(t => t.Reference).HasMaxLength(20).IsRequired();
 
         builder.Property(t => t.Title).HasMaxLength(200).IsRequired();

@@ -8,6 +8,7 @@ public sealed class TicketEscalationConfiguration : IEntityTypeConfiguration<Tic
 {
     public void Configure(EntityTypeBuilder<TicketEscalation> b)
     {
+        b.ToTable("TicketEscalations");
         b.HasKey(x => x.Id);
         b.Property(x => x.Reason).HasMaxLength(500).IsRequired();
         b.Property(x => x.EscalatedBy).HasMaxLength(100).IsRequired();
