@@ -16,8 +16,8 @@ public sealed class TicketRepository(SupportDbContext db) : ITicketRepository
 
     public async Task<string> NextReferenceAsync(CancellationToken ct)
     {
-        // Single-instance application: the highest id so far is good enough. A database
-        // sequence would be the answer if more than one API instance created tickets.
+        // Inherited reference allocation can race even within one process.
+        // A database sequence is needed before claiming concurrent-create safety.
         var lastId = await db.Set<Ticket>()
             .AsNoTracking()
             .OrderByDescending(t => t.Id)

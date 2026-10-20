@@ -42,8 +42,13 @@ builder.Services.AddOptions<SlaPolicy>()
     .BindConfiguration("Sla").Validate(x => x.IsValid(), "Invalid SLA configuration.").ValidateOnStart();
 builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<SlaPolicy>>().Value);
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
-if (Encoding.UTF8.GetByteCount(jwt.SigningKey) < 32 || jwt.LifetimeMinutes is < 1 or > 120 || string.IsNullOrWhiteSpace(jwt.Issuer) || string.IsNullOrWhiteSpace(jwt.Audience))
+if (Encoding.UTF8.GetByteCount(jwt.SigningKey) < 32
+    || jwt.LifetimeMinutes is < 1 or > 120
+    || string.IsNullOrWhiteSpace(jwt.Issuer)
+    || string.IsNullOrWhiteSpace(jwt.Audience))
+{
     throw new InvalidOperationException("Configure Jwt__SigningKey (at least 32 bytes), issuer, audience and lifetime. See .env.example.");
+}
 builder.Services.AddSingleton(jwt);
 builder.Services.AddSingleton<ITokenIssuer, JwtTokenIssuer>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
@@ -61,7 +66,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidAlgorithms = [SecurityAlgorithms.HmacSha256]
     };
 });
-builder.Services.AddAuthorization(options => options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+// New endpoints are protected unless they explicitly opt out.
+builder.Services.AddAuthorization(options =>
+    options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 builder.Services.AddTransient<IValidator<EscalationBody>, EscalationBodyValidator>();
 builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", timeout: TimeSpan.FromSeconds(5));
 builder.Services.AddApplication();

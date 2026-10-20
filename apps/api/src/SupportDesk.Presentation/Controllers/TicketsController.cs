@@ -59,11 +59,19 @@ public sealed class TicketsController : ControllerBase
         [FromServices] AssignTicketCommandHandler handler,
         CancellationToken ct) =>
         handler.HandleAsync(id, request, ct);
+
+    /// <summary>Escalates a ticket and records the authenticated caller.</summary>
     [HttpPost("{id:int}/escalate")]
-    public Task<EscalationResult> Escalate(int id,
+    public Task<EscalationResult> Escalate(
+        int id,
         EscalationBody request,
-        [FromServices] EscalateTicketHandler handler, CancellationToken ct) => handler.HandleAsync(id,
-            new(request.Reason, $"agent:{User.FindFirstValue(ClaimTypes.NameIdentifier)}"), ct);
+        [FromServices] EscalateTicketHandler handler,
+        CancellationToken ct)
+    {
+        // The body cannot choose the audit actor.
+        var actor = $"agent:{User.FindFirstValue(ClaimTypes.NameIdentifier)}";
+        return handler.HandleAsync(id, new EscalateRequest(request.Reason, actor), ct);
+    }
 
     [HttpGet("{id:int}/escalations")]
     public async Task<IReadOnlyList<EscalationDto>> History(int id,
