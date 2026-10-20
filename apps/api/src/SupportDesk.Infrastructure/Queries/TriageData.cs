@@ -17,6 +17,7 @@ public sealed class TriageData(SupportDbContext db) : ITriageData
         db.Set<Category>().AsNoTracking().FirstOrDefaultAsync(category => category.Id == id, ct);
 
     public async Task<IReadOnlyList<AssignmentCandidate>> CandidatesAsync(int categoryId, CancellationToken ct) =>
+        // The command holds a serializable transaction from these reads through its save.
         // Specializations and workloads are scalar subqueries, not one request per agent.
         await db.Set<Agent>().AsNoTracking()
             .Select(agent => new AssignmentCandidate(

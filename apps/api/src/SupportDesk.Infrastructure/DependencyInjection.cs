@@ -24,8 +24,9 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException(
                 "Connection string 'Default' is missing. See README.md for local setup.");
 
-        services.AddDbContext<SupportDbContext>(options =>
-            options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure()));
+        // Ticket writes own their transaction/retry boundary. A blanket provider retry
+        // could replay a commit whose outcome is unknown and duplicate a successful POST.
+        services.AddDbContext<SupportDbContext>(options => options.UseSqlServer(connectionString));
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SupportDbContext>());
 

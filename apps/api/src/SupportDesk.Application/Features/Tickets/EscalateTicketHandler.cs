@@ -17,7 +17,10 @@ public sealed class EscalateTicketHandler(
     IUnitOfWork unit,
     GetTicketQueryHandler read)
 {
-    public async Task<EscalationResult> HandleAsync(int id, EscalateRequest request, CancellationToken ct)
+    public Task<EscalationResult> HandleAsync(int id, EscalateRequest request, CancellationToken ct) =>
+        unit.ExecuteTicketWriteAsync(token => EscalateAsync(id, request, token), ct);
+
+    private async Task<EscalationResult> EscalateAsync(int id, EscalateRequest request, CancellationToken ct)
     {
         var ticket = await tickets.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Ticket", id);
@@ -29,7 +32,7 @@ public sealed class EscalateTicketHandler(
         history.Complete(ticket);
         await data.AddEscalationAsync(history, ct);
 
-        // One SaveChanges commits the ticket and its history atomically.
+        // Save both changes together; the outer transaction commits the full decision.
         await unit.SaveChangesAsync(ct);
 
         var result = await read.HandleAsync(id, ct);

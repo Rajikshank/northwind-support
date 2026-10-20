@@ -13,6 +13,7 @@ public sealed class JwtTokenIssuer(JwtSettings settings, IClock clock) : ITokenI
         var now = clock.UtcNow;
         var expiry = now.AddMinutes(settings.LifetimeMinutes);
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SigningKey));
+        // Signed claims are readable by the client; never include password hashes or secrets.
         Claim[] claims =
         [
             new(JwtRegisteredClaimNames.Sub, agent.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)),

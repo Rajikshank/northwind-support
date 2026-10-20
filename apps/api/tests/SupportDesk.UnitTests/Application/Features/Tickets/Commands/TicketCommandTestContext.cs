@@ -21,6 +21,9 @@ internal sealed class TicketCommandTestContext
 {
     public TicketCommandTestContext()
     {
+        UnitOfWork.Setup(unit => unit.ExecuteTicketWriteAsync(
+                It.IsAny<Func<CancellationToken, Task<TicketDetailDto>>>(), It.IsAny<CancellationToken>()))
+            .Returns((Func<CancellationToken, Task<TicketDetailDto>> operation, CancellationToken ct) => operation(ct));
         Customers.Setup(c => c.ExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 

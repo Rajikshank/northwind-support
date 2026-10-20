@@ -6,4 +6,7 @@ namespace SupportDesk.Domain.Repositories;
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken ct);
+
+    /// <summary>Reads triage facts and commits its decision under one short serializable transaction.</summary>
+    Task<T> ExecuteTicketWriteAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct);
 }

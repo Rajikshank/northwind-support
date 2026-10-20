@@ -42,6 +42,9 @@ public class TriageTests
         clock.Advance(TimeSpan.FromHours(3));
         var repo = new Mock<ITicketRepository>(); repo.Setup(r => r.GetByIdAsync(0, It.IsAny<CancellationToken>())).ReturnsAsync(ticket);
         var unit = new Mock<IUnitOfWork>();
+        unit.Setup(value => value.ExecuteTicketWriteAsync(
+                It.IsAny<Func<CancellationToken, Task<EscalationResult>>>(), It.IsAny<CancellationToken>()))
+            .Returns((Func<CancellationToken, Task<EscalationResult>> operation, CancellationToken ct) => operation(ct));
         var queries = new Mock<ITicketQueries>(); queries.Setup(q => q.GetDetailAsync(0, It.IsAny<CancellationToken>())).ReturnsAsync(new TicketDetailDto());
         var handler = new EscalateTicketHandler(repo.Object, data.Object, service, clock, unit.Object, new GetTicketQueryHandler(queries.Object));
         var result = await handler.HandleAsync(0, new("Customer is impacted", "Alex"), default);

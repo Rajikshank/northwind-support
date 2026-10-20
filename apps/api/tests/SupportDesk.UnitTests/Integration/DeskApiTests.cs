@@ -15,11 +15,14 @@ using SupportDesk.Domain.Aggregates.Agents;
 using SupportDesk.Domain.Aggregates.Categories;
 using SupportDesk.Domain.Aggregates.Customers;
 using SupportDesk.Domain.Aggregates.Tickets;
+using SupportDesk.Domain.Repositories;
 using SupportDesk.Infrastructure.Data;
+using SupportDesk.Infrastructure.Repositories;
 namespace SupportDesk.UnitTests.Integration;
 
 public sealed class DeskFactory : WebApplicationFactory<Program>
 {
+    private int nextReference;
     private readonly SqliteConnection connection = new("Data Source=:memory:");
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -33,6 +36,9 @@ public sealed class DeskFactory : WebApplicationFactory<Program>
             services.RemoveAll<IDbContextOptionsConfiguration<SupportDbContext>>();
             services.RemoveAll<SupportDbContext>();
             services.AddDbContext<SupportDbContext>(options => options.UseSqlite(connection));
+            // SQLite has no sequences; SQL Server tests exercise the production allocator.
+            services.AddScoped<ITicketRepository>(provider => new FixtureTicketRepository(
+                provider.GetRequiredService<SupportDbContext>(), () => Interlocked.Increment(ref nextReference)));
         });
     }
     public async Task SeedAsync()
@@ -85,6 +91,46 @@ public class DeskApiTests
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", issuer.Issue(session.User).Token);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/tickets")).StatusCode);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "invalid");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/tickets")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("issuer")]
+    [InlineData("audience")]
+    [InlineData("signing-key")]
+    [InlineData("tampered-claims")]
+    public async Task TokensWithUntrustedIdentityAreRejected(string fault)
+    {
+        using var factory = new DeskFactory();
+        using var client = factory.CreateClient();
+        await factory.SeedAsync();
+        var login = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = "alex@example.com",
+            password = "LocalFixture-Password!"
+        });
+        var session = (await login.Content.ReadFromJsonAsync<LoginResult>())!;
+        var settings = new SupportDesk.Presentation.Security.JwtSettings
+        {
+            SigningKey = fault == "signing-key"
+                ? "DifferentFixture-Key-Never-Use-In-Production"
+                : "IntegrationFixture-Only-Never-Use-In-Production",
+            Issuer = fault == "issuer" ? "untrusted-issuer" : "northwind-support",
+            Audience = fault == "audience" ? "another-application" : "northwind-support-web"
+        };
+        var issuer = new SupportDesk.Presentation.Security.JwtTokenIssuer(settings,
+            new SupportDesk.UnitTests.TestDoubles.FixedClock(DateTime.UtcNow));
+        var token = issuer.Issue(session.User).Token;
+        if (fault == "tampered-claims")
+        {
+            var jwt = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(token);
+            jwt.Payload["sub"] = "999";
+            var parts = token.Split('.');
+            parts[1] = Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Encode(jwt.Payload.SerializeToJson());
+            token = string.Join('.', parts);
+        }
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/tickets")).StatusCode);
     }
 
@@ -146,4 +192,13 @@ public class DeskApiTests
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOptions = new(System.Text.Json.JsonSerializerDefaults.Web)
     { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
+}
+
+internal sealed class FixtureTicketRepository(SupportDbContext db, Func<int> nextReference) : ITicketRepository
+{
+    private readonly TicketRepository inner = new(db);
+
+    public Task<Ticket?> GetByIdAsync(int id, CancellationToken ct) => inner.GetByIdAsync(id, ct);
+    public Task AddAsync(Ticket ticket, CancellationToken ct) => inner.AddAsync(ticket, ct);
+    public Task<string> NextReferenceAsync(CancellationToken ct) => Task.FromResult($"TCK-{nextReference():D4}");
 }

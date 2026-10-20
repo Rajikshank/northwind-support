@@ -24,6 +24,18 @@ public sealed class RaiseTicketCommandHandler(
     /// <exception cref="NotFoundException">The customer or the category does not exist.</exception>
     public async Task<TicketDetailDto> HandleAsync(CreateTicketRequest request, CancellationToken ct)
     {
+        // Capacity reads must remain protected until the selected assignment is saved.
+        var result = await unitOfWork.ExecuteTicketWriteAsync(token => CreateAsync(request, token), ct);
+
+        // Report success only after commit, not from an attempt that might be rolled back.
+        logger.LogInformation(
+            "Ticket {Reference} raised for customer {CustomerId} in category {CategoryId}.",
+            result.Reference, request.CustomerId, request.CategoryId);
+        return result;
+    }
+
+    private async Task<TicketDetailDto> CreateAsync(CreateTicketRequest request, CancellationToken ct)
+    {
         if (!await customers.ExistsAsync(request.CustomerId, ct))
         {
             throw new NotFoundException("Customer", request.CustomerId);
@@ -46,10 +58,6 @@ public sealed class RaiseTicketCommandHandler(
         var decision = await triage.ApplyAsync(ticket, ticket.CreatedAtUtc, false, ct, defaultedPriority: request.RequestedPriority is null);
         await tickets.AddAsync(ticket, ct);
         await unitOfWork.SaveChangesAsync(ct);
-
-        logger.LogInformation(
-            "Ticket {Reference} raised for customer {CustomerId} in category {CategoryId}.",
-            ticket.Reference, ticket.CustomerId, ticket.CategoryId);
 
         var result = await getTicket.HandleAsync(ticket.Id, ct);
         result.Triage = decision;

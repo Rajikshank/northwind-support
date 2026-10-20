@@ -22,6 +22,9 @@ namespace SupportDesk.Infrastructure.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.HasSequence("TicketReferenceNumbers", "dbo")
+                .StartsAt(41L);
+
             modelBuilder.Entity("SupportDesk.Domain.Aggregates.Agents.Agent", b =>
                 {
                     b.Property<int>("Id")
